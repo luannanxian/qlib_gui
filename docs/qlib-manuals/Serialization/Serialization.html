@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="serialization">
+<span id="serial"></span><h1>Serialization<a class="headerlink" href="#serialization" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> supports dumping the state of <code class="docutils literal notranslate"><span class="pre">DataHandler</span></code>, <code class="docutils literal notranslate"><span class="pre">DataSet</span></code>, <code class="docutils literal notranslate"><span class="pre">Processor</span></code> and <code class="docutils literal notranslate"><span class="pre">Model</span></code>, etc. into a disk and reloading them.</p>
+</section>
+<section id="serializable-class">
+<h2>Serializable Class<a class="headerlink" href="#serializable-class" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a base class <code class="docutils literal notranslate"><span class="pre">qlib.utils.serial.Serializable</span></code>, whose state can be dumped into or loaded from disk in <cite>pickle</cite> format.
+When users dump the state of a <code class="docutils literal notranslate"><span class="pre">Serializable</span></code> instance, the attributes of the instance whose name <strong>does not</strong> start with <cite>_</cite> will be saved on the disk.
+However, users can use <code class="docutils literal notranslate"><span class="pre">config</span></code> method or override <code class="docutils literal notranslate"><span class="pre">default_dump_all</span></code> attribute to prevent this feature.</p>
+<p>Users can also override <code class="docutils literal notranslate"><span class="pre">pickle_backend</span></code> attribute to choose a pickle backend. The supported value is “pickle” (default and common) and “dill” (dump more things such as function, more information in <a class="reference external" href="https://pypi.org/project/dill/">here</a>).</p>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code>’s serializable class includes  <code class="docutils literal notranslate"><span class="pre">DataHandler</span></code>, <code class="docutils literal notranslate"><span class="pre">DataSet</span></code>, <code class="docutils literal notranslate"><span class="pre">Processor</span></code> and <code class="docutils literal notranslate"><span class="pre">Model</span></code>, etc., which are subclass of  <code class="docutils literal notranslate"><span class="pre">qlib.utils.serial.Serializable</span></code>.
+Specifically, <code class="docutils literal notranslate"><span class="pre">qlib.data.dataset.DatasetH</span></code> is one of them. Users can serialize <code class="docutils literal notranslate"><span class="pre">DatasetH</span></code> as follows.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1">##=============dump dataset=============</span>
+<span class="n">dataset</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">"dataset.pkl"</span><span class="p">)</span> <span class="c1"># dataset is an instance of qlib.data.dataset.DatasetH</span>
+
+<span class="c1">##=============reload dataset=============</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"dataset.pkl"</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">file_dataset</span><span class="p">:</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file_dataset</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only state of <code class="docutils literal notranslate"><span class="pre">DatasetH</span></code> should be saved on the disk, such as some <cite>mean</cite> and <cite>variance</cite> used for data normalization, etc.</p>
+<p>After reloading the <code class="docutils literal notranslate"><span class="pre">DatasetH</span></code>, users need to reinitialize it. It means that users can reset some states of <code class="docutils literal notranslate"><span class="pre">DatasetH</span></code> or <code class="docutils literal notranslate"><span class="pre">QlibDataHandler</span></code> such as <cite>instruments</cite>, <cite>start_time</cite>, <cite>end_time</cite> and <cite>segments</cite>, etc.,  and generate new data according to the states (data is not state and should not be saved on the disk).</p>
+</div>
+<p>A more detailed example is in this <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/examples/highfreq">link</a>.</p>
+</section>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this heading"></a></h2>
+<p>Please refer to <a class="reference external" href="../reference/api.html#module-qlib.utils.serial.Serializable">Serializable API</a>.</p>
+</section>
+</section>
+</div>
+</body>
+</html>

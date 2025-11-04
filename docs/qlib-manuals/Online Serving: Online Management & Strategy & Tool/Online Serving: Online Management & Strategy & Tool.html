@@ -1,0 +1,810 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="online-serving">
+<span id="id1"></span><h1>Online Serving<a class="headerlink" href="#online-serving" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<img alt="../_images/online_serving.png" class="align-center" src="../_images/online_serving.png"/>
+<p>In addition to backtesting, one way to test a model is effective is to make predictions in real market conditions or even do real trading based on those predictions.
+<code class="docutils literal notranslate"><span class="pre">Online</span> <span class="pre">Serving</span></code> is a set of modules for online models using the latest data,
+which including <a class="reference external" href="#OnlineManager">Online Manager</a>, <a class="reference external" href="#OnlineStrategy">Online Strategy</a>, <a class="reference external" href="#OnlineTool">Online Tool</a>, <a class="reference external" href="#Updater">Updater</a>.</p>
+<p><a class="reference external" href="https://github.com/microsoft/qlib/tree/main/examples/online_srv">Here</a> are several examples for reference, which demonstrate different features of <code class="docutils literal notranslate"><span class="pre">Online</span> <span class="pre">Serving</span></code>.
+If you have many models or <cite>task</cite> needs to be managed, please consider <a class="reference external" href="../advanced/task_management.html">Task Management</a>.
+The <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/examples/online_srv">examples</a> are based on some components in <a class="reference external" href="../advanced/task_management.html">Task Management</a> such as <code class="docutils literal notranslate"><span class="pre">TrainerRM</span></code> or <code class="docutils literal notranslate"><span class="pre">Collector</span></code>.</p>
+<p><strong>NOTE</strong>: User should keep his data source updated to support online serving. For example, Qlib provides <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/scripts/data_collector/yahoo/README.md#automatic-update-of-daily-frequency-datafrom-yahoo-finance">a batch of scripts</a> to help users update Yahoo daily data.</p>
+<p>Known limitations currently
+- Currently, the daily updating prediction for the next trading day is supported. But generating orders for the next trading day is not supported due to the <cite>limitations of public data &lt;https://github.com/microsoft/qlib/issues/215#issuecomment-766293563&gt;_</cite></p>
+</section>
+<section id="id3">
+<h2>Online Manager<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h2>
+<p>OnlineManager can manage a set of <a class="reference external" href="#OnlineStrategy">Online Strategy</a> and run them dynamically.</p>
+<p>With the change of time, the decisive models will be also changed. In this module, we call those contributing models <cite>online</cite> models.
+In every routine(such as every day or every minute), the <cite>online</cite> models may be changed and the prediction of them needs to be updated.
+So this module provides a series of methods to control this process.</p>
+<p>This module also provides a method to simulate <a class="reference external" href="#OnlineStrategy">Online Strategy</a> in history.
+Which means you can verify your strategy or find a better one.</p>
+<p>There are 4 total situations for using different trainers in different situations:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Situations</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Online + Trainer</p></td>
+<td><p>When you want to do a REAL routine, the Trainer will help you train the models. It
+will train models task by task and strategy by strategy.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Online + DelayTrainer</p></td>
+<td><p>DelayTrainer will skip concrete training until all tasks have been prepared by
+different strategies. It makes users can parallelly train all tasks at the end of
+<cite>routine</cite> or <cite>first_train</cite>. Otherwise, these functions will get stuck when each
+strategy prepare tasks.</p></td>
+</tr>
+<tr class="row-even"><td><p>Simulation + Trainer</p></td>
+<td><p>It will behave in the same way as <cite>Online + Trainer</cite>. The only difference is that it
+is for simulation/backtesting instead of online trading</p></td>
+</tr>
+<tr class="row-odd"><td><p>Simulation + DelayTrainer</p></td>
+<td><p>When your models don’t have any temporal dependence, you can use DelayTrainer
+for the ability to multitasking. It means all tasks in all routines
+can be REAL trained at the end of simulating. The signals will be prepared well at
+different time segments (based on whether or not any new model is online).</p></td>
+</tr>
+</tbody>
+</table>
+<p>Here is some pseudo code that demonstrate the workflow of each situation</p>
+<dl class="simple">
+<dt>For simplicity</dt><dd><ul class="simple">
+<li><p>Only one strategy is used in the strategy</p></li>
+<li><p><cite>update_online_pred</cite> is only called in the online mode and is ignored</p></li>
+</ul>
+</dd>
+</dl>
+<ol class="arabic simple">
+<li><p><cite>Online + Trainer</cite></p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tasks</span> <span class="o">=</span> <span class="n">first_train</span><span class="p">()</span>
+<span class="n">models</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">end_train</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="n">online_trading_days</span><span class="p">:</span>
+    <span class="c1"># OnlineManager.routine</span>
+    <span class="n">models</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">prepare_tasks</span><span class="p">())</span>  <span class="c1"># for each strategy</span>
+    <span class="n">strategy</span><span class="o">.</span><span class="n">prepare_online_models</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>  <span class="c1"># for each strategy</span>
+
+    <span class="n">trainer</span><span class="o">.</span><span class="n">end_train</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>
+    <span class="n">prepare_signals</span><span class="p">()</span>  <span class="c1"># prepare trading signals daily</span>
+</pre></div>
+</div>
+<p><cite>Online + DelayTrainer</cite>: the workflow is the same as <cite>Online + Trainer</cite>.</p>
+<ol class="arabic simple" start="2">
+<li><p><cite>Simulation + DelayTrainer</cite></p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># simulate</span>
+<span class="n">tasks</span> <span class="o">=</span> <span class="n">first_train</span><span class="p">()</span>
+<span class="n">models</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">day</span> <span class="ow">in</span> <span class="n">historical_calendars</span><span class="p">:</span>
+    <span class="c1"># OnlineManager.routine</span>
+    <span class="n">models</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">strategy</span><span class="o">.</span><span class="n">prepare_tasks</span><span class="p">())</span>  <span class="c1"># for each strategy</span>
+    <span class="n">strategy</span><span class="o">.</span><span class="n">prepare_online_models</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>  <span class="c1"># for each strategy</span>
+<span class="c1"># delay_prepare()</span>
+<span class="c1"># FIXME: Currently the delay_prepare is not implemented in a proper way.</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">end_train</span><span class="p">(</span><span class="o">&lt;</span><span class="k">for</span> <span class="nb">all</span> <span class="n">previous</span> <span class="n">models</span><span class="o">&gt;</span><span class="p">)</span>
+<span class="n">prepare_signals</span><span class="p">()</span>
+</pre></div>
+</div>
+<p># Can we simplify current workflow?</p>
+<ul>
+<li><p>Can reduce the number of state of tasks?</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>For each task, we have three phases (i.e. task, partly trained task, final trained task)</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.manager.</span></span><span class="sig-name descname"><span class="pre">OnlineManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strategies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><span class="pre">OnlineStrategy</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><span class="pre">OnlineStrategy</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.model.trainer.Trainer" title="qlib.model.trainer.Trainer"><span class="pre">Trainer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">begin_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Timestamp</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'day'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>OnlineManager can manage online models with <a class="reference external" href="#OnlineStrategy">Online Strategy</a>.
+It also provides a history recording of which models are online at what time.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strategies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><span class="pre">OnlineStrategy</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><span class="pre">OnlineStrategy</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.model.trainer.Trainer" title="qlib.model.trainer.Trainer"><span class="pre">Trainer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">begin_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Timestamp</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'day'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Init OnlineManager.
+One OnlineManager must have at least one OnlineStrategy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>strategies</strong> (<em>Union</em><em>[</em><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><em>OnlineStrategy</em></a><em>, </em><em>List</em><em>[</em><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><em>OnlineStrategy</em></a><em>]</em><em>]</em>) – an instance of OnlineStrategy or a list of OnlineStrategy</p></li>
+<li><p><strong>begin_time</strong> (<em>Union</em><em>[</em><em>str</em><em>,</em><em>pd.Timestamp</em><em>]</em><em>, </em><em>optional</em>) – the OnlineManager will begin at this time. Defaults to None for using the latest date.</p></li>
+<li><p><strong>trainer</strong> (<a class="reference internal" href="../reference/api.html#qlib.model.trainer.Trainer" title="qlib.model.trainer.Trainer"><em>qlib.model.trainer.Trainer</em></a>) – the trainer to train task. None for using TrainerR.</p></li>
+<li><p><strong>freq</strong> (<em>str</em><em>, </em><em>optional</em>) – data frequency. Defaults to “day”.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">first_train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strategies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><span class="pre">OnlineStrategy</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Get tasks from every strategy’s first_tasks method and train them.
+If using DelayTrainer, it can finish training all together after every strategy’s first_tasks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>strategies</strong> (<em>List</em><em>[</em><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><em>OnlineStrategy</em></a><em>]</em>) – the strategies list (need this param when adding strategies). None for use default strategies.</p></li>
+<li><p><strong>model_kwargs</strong> (<em>dict</em>) – the params for <cite>prepare_online_models</cite></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">routine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cur_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Timestamp</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signal_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Typical update process for every strategy and record the online history.</p>
+<p>The typical update process after a routine, such as day by day or month by month.
+The process is: Update predictions -&gt; Prepare tasks -&gt; Prepare online models -&gt; Prepare signals.</p>
+<p>If using DelayTrainer, it can finish training all together after every strategy’s prepare_tasks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cur_time</strong> (<em>Union</em><em>[</em><em>str</em><em>,</em><em>pd.Timestamp</em><em>]</em><em>, </em><em>optional</em>) – run routine method in this time. Defaults to None.</p></li>
+<li><p><strong>task_kwargs</strong> (<em>dict</em>) – the params for <cite>prepare_tasks</cite></p></li>
+<li><p><strong>model_kwargs</strong> (<em>dict</em>) – the params for <cite>prepare_online_models</cite></p></li>
+<li><p><strong>signal_kwargs</strong> (<em>dict</em>) – the params for <cite>prepare_signals</cite></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_collector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.workflow.task.collect.MergeCollector" title="qlib.workflow.task.collect.MergeCollector"><span class="pre">MergeCollector</span></a></span></span></dt>
+<dd><p>Get the instance of <a class="reference external" href="../advanced/task_management.html#TaskCollecting">Collector</a> to collect results from every strategy.
+This collector can be a basis as the signals preparation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>**kwargs</strong> – the params for get_collector.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the collector to merge other collectors.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../reference/api.html#qlib.workflow.task.collect.MergeCollector" title="qlib.workflow.task.collect.MergeCollector">MergeCollector</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">add_strategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strategies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><span class="pre">OnlineStrategy</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><span class="pre">OnlineStrategy</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Add some new strategies to OnlineManager.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>strategy</strong> (<em>Union</em><em>[</em><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><em>OnlineStrategy</em></a><em>, </em><em>List</em><em>[</em><a class="reference internal" href="../reference/api.html#qlib.workflow.online.strategy.OnlineStrategy" title="qlib.workflow.online.strategy.OnlineStrategy"><em>OnlineStrategy</em></a><em>]</em><em>]</em>) – a list of OnlineStrategy</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">prepare_signals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prepare_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">=</span> <span class="pre">&lt;qlib.model.ens.ensemble.AverageEnsemble</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">over_write=False</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>After preparing the data of the last routine (a box in box-plot) which means the end of the routine, we can prepare trading signals for the next routine.</p>
+<p>NOTE: Given a set prediction, all signals before these prediction end times will be prepared well.</p>
+<p>Even if the latest signal already exists, the latest calculation result will be overwritten.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Given a prediction of a certain time, all signals before this time will be prepared well.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prepare_func</strong> (<em>Callable</em><em>, </em><em>optional</em>) – Get signals from a dict after collecting. Defaults to AverageEnsemble(), the results collected by MergeCollector must be {xxx:pred}.</p></li>
+<li><p><strong>over_write</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the new signals will overwrite. If False, the new signals will append to the end of signals. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the signals.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_signals</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">Series</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Get prepared online signals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series for only one signals every datetime.
+pd.DataFrame for multiple signals, for example, buy and sell operations use different trading signals.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Union[pd.Series, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">simulate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">end_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'day'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signal_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">Series</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Starting from the current time, this method will simulate every routine in OnlineManager until the end time.</p>
+<p>Considering the parallel training, the models and signals can be prepared after all routine simulating.</p>
+<p>The delay training way can be <code class="docutils literal notranslate"><span class="pre">DelayTrainer</span></code> and the delay preparing signals way can be <code class="docutils literal notranslate"><span class="pre">delay_prepare</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>end_time</strong> – the time the simulation will end</p></li>
+<li><p><strong>frequency</strong> – the calendar frequency</p></li>
+<li><p><strong>task_kwargs</strong> (<em>dict</em>) – the params for <cite>prepare_tasks</cite></p></li>
+<li><p><strong>model_kwargs</strong> (<em>dict</em>) – the params for <cite>prepare_online_models</cite></p></li>
+<li><p><strong>signal_kwargs</strong> (<em>dict</em>) – the params for <cite>prepare_signals</cite></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.Series for only one signals every datetime.
+pd.DataFrame for multiple signals, for example, buy and sell operations use different trading signals.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Union[pd.Series, pd.DataFrame]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">delay_prepare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signal_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Prepare all models and signals if something is waiting for preparation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_kwargs</strong> – the params for <cite>end_train</cite></p></li>
+<li><p><strong>signal_kwargs</strong> – the params for <cite>prepare_signals</cite></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="id7">
+<h2>Online Strategy<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
+<p>OnlineStrategy module is an element of online serving.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.strategy.</span></span><span class="sig-name descname"><span class="pre">OnlineStrategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>OnlineStrategy is working with <a class="reference external" href="#OnlineManager">Online Manager</a>, responding to how the tasks are generated, the models are updated and signals are prepared.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Init OnlineStrategy.
+This module <strong>MUST</strong> use <a class="reference external" href="../reference/api.html#qlib.model.trainer.Trainer">Trainer</a> to finishing model training.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name_id</strong> (<em>str</em>) – a unique name or id.</p></li>
+<li><p><strong>trainer</strong> (<a class="reference internal" href="../reference/api.html#qlib.model.trainer.Trainer" title="qlib.model.trainer.Trainer"><em>qlib.model.trainer.Trainer</em></a><em>, </em><em>optional</em>) – a instance of Trainer. Defaults to None.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">prepare_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cur_time</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>After the end of a routine, check whether we need to prepare and train some new tasks based on cur_time (None for latest)..
+Return the new tasks waiting for training.</p>
+<p>You can find the last online models by OnlineTool.online_models.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">prepare_online_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trained_models</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cur_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">object</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Select some models from trained models and set them to online models.
+This is a typical implementation to online all trained models, you can override it to implement the complex method.
+You can find the last online models by OnlineTool.online_models if you still need them.</p>
+<p>NOTE: Reset all online models to trained models. If there are no trained models, then do nothing.</p>
+<dl class="simple">
+<dt><strong>NOTE</strong>:</dt><dd><p>Current implementation is very naive. Here is a more complex situation which is more closer to the
+practical scenarios.
+1. Train new models at the day before <cite>test_start</cite> (at time stamp <cite>T</cite>)
+2. Switch models at the <cite>test_start</cite> (at time timestamp <cite>T + 1</cite> typically)</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>models</strong> (<em>list</em>) – a list of models.</p></li>
+<li><p><strong>cur_time</strong> (<em>pd.Dataframe</em>) – current time from OnlineManger. None for the latest.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of online models.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[object]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">first_tasks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Generate a series of tasks firstly and return them.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_collector</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.workflow.task.collect.Collector" title="qlib.workflow.task.collect.Collector"><span class="pre">Collector</span></a></span></span></dt>
+<dd><p>Get the instance of <a class="reference external" href="../advanced/task_management.html#TaskCollecting">Collector</a> to collect different results of this strategy.</p>
+<dl class="simple">
+<dt>For example:</dt><dd><ol class="arabic simple">
+<li><p>collect predictions in Recorder</p></li>
+<li><p>collect signals in a txt file</p></li>
+</ol>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Collector</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.strategy.</span></span><span class="sig-name descname"><span class="pre">RollingStrategy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_template</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rolling_gen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.task.gen.RollingGen" title="qlib.workflow.task.gen.RollingGen"><span class="pre">RollingGen</span></a></span></em><span class="sig-paren">)</span></dt>
+<dd><p>This example strategy always uses the latest rolling model sas online models.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_template</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rolling_gen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.task.gen.RollingGen" title="qlib.workflow.task.gen.RollingGen"><span class="pre">RollingGen</span></a></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Init RollingStrategy.</p>
+<p>Assumption: the str of name_id, the experiment name, and the trainer’s experiment name are the same.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name_id</strong> (<em>str</em>) – a unique name or id. Will be also the name of the Experiment.</p></li>
+<li><p><strong>task_template</strong> (<em>Union</em><em>[</em><em>dict</em><em>, </em><em>List</em><em>[</em><em>dict</em><em>]</em><em>]</em>) – a list of task_template or a single template, which will be used to generate many tasks using rolling_gen.</p></li>
+<li><p><strong>rolling_gen</strong> (<a class="reference internal" href="../reference/api.html#qlib.workflow.task.gen.RollingGen" title="qlib.workflow.task.gen.RollingGen"><em>RollingGen</em></a>) – an instance of RollingGen</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_collector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">process_list=[&lt;qlib.model.ens.group.RollingGroup</span> <span class="pre">object&gt;],</span> <span class="pre">rec_key_func=None,</span> <span class="pre">rec_filter_func=None,</span> <span class="pre">artifacts_key=None</span></em><span class="sig-paren">)</span></dt>
+<dd><p>Get the instance of <a class="reference external" href="../advanced/task_management.html#TaskCollecting">Collector</a> to collect results. The returned collector must distinguish results in different models.</p>
+<p>Assumption: the models can be distinguished based on the model name and rolling test segments.
+If you do not want this assumption, please implement your method or use another rec_key_func.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rec_key_func</strong> (<em>Callable</em>) – a function to get the key of a recorder. If None, use recorder id.</p></li>
+<li><p><strong>rec_filter_func</strong> (<em>Callable</em><em>, </em><em>optional</em>) – filter the recorder by return True or False. Defaults to None.</p></li>
+<li><p><strong>artifacts_key</strong> (<em>List</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – the artifacts key you want to get. If None, get all artifacts.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">first_tasks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Use rolling_gen to generate different tasks based on task_template.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a list of tasks</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[dict]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">prepare_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cur_time</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Prepare new tasks based on cur_time (None for the latest).</p>
+<p>You can find the last online models by OnlineToolR.online_models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a list of new tasks.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[dict]</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="id11">
+<h2>Online Tool<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h2>
+<p>OnlineTool is a module to set and unset a series of <cite>online</cite> models.
+The <cite>online</cite> models are some decisive models in some time points, which can be changed with the change of time.
+This allows us to use efficient submodels as the market-style changing.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.utils.</span></span><span class="sig-name descname"><span class="pre">OnlineTool</span></span></dt>
+<dd><p>OnlineTool will manage <cite>online</cite> models in an experiment that includes the model recorders.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Init OnlineTool.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">set_online_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">object</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Set <cite>tag</cite> to the model to sign whether online.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tag</strong> (<em>str</em>) – the tags in <cite>ONLINE_TAG</cite>, <cite>OFFLINE_TAG</cite></p></li>
+<li><p><strong>recorder</strong> (<em>Union</em><em>[</em><em>list</em><em>,</em><em>object</em><em>]</em>) – the model’s recorder</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_online_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span></dt>
+<dd><p>Given a model recorder and return its online tag.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>recorder</strong> (<em>Object</em>) – the model’s recorder</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the online tag</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">reset_online_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">object</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Offline all models and set the recorders to ‘online’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>recorder</strong> (<em>Union</em><em>[</em><em>list</em><em>,</em><em>object</em><em>]</em>) – the recorder you want to reset to ‘online’.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">online_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
+<dd><p>Get current <cite>online</cite> models</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a list of <cite>online</cite> models.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">update_online_pred</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">to_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update the predictions of <cite>online</cite> models to to_date.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>to_date</strong> (<em>pd.Timestamp</em>) – the pred before this date will be updated. None for updating to the latest.</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.utils.</span></span><span class="sig-name descname"><span class="pre">OnlineToolR</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default_exp_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>The implementation of OnlineTool based on (R)ecorder.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default_exp_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Init OnlineToolR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>default_exp_name</strong> (<em>str</em>) – the default experiment name.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">set_online_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Set <cite>tag</cite> to the model’s recorder to sign whether online.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tag</strong> (<em>str</em>) – the tags in <cite>ONLINE_TAG</cite>, <cite>NEXT_ONLINE_TAG</cite>, <cite>OFFLINE_TAG</cite></p></li>
+<li><p><strong>recorder</strong> (<em>Union</em><em>[</em><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><em>Recorder</em></a><em>, </em><em>List</em><em>]</em>) – a list of Recorder or an instance of Recorder</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_online_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span></dt>
+<dd><p>Given a model recorder and return its online tag.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>recorder</strong> (<a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><em>Recorder</em></a>) – an instance of recorder</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the online tag</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">reset_online_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Offline all models and set the recorders to ‘online’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>recorder</strong> (<em>Union</em><em>[</em><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><em>Recorder</em></a><em>, </em><em>List</em><em>]</em>) – the recorder you want to reset to ‘online’.</p></li>
+<li><p><strong>exp_name</strong> (<em>str</em>) – the experiment name. If None, then use default_exp_name.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">online_models</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
+<dd><p>Get current <cite>online</cite> models</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>exp_name</strong> (<em>str</em>) – the experiment name. If None, then use default_exp_name.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of <cite>online</cite> models.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">update_online_pred</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">to_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update the predictions of online models to to_date.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>to_date</strong> (<em>pd.Timestamp</em>) – the pred before this date will be updated. None for updating to latest time in Calendar.</p></li>
+<li><p><strong>exp_name</strong> (<em>str</em>) – the experiment name. If None, then use default_exp_name.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="id12">
+<h2>Updater<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h2>
+<p>Updater is a module to update artifacts such as predictions when the stock data is updating.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.update.</span></span><span class="sig-name descname"><span class="pre">RMDLoader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Recorder Model Dataset Loader</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></em><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unprepared_dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DatasetH</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">DatasetH</span></span></span></dt>
+<dd><p>Load, config and setup dataset.</p>
+<p>This dataset is for inference.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_time</strong> – the start_time of underlying data</p></li>
+<li><p><strong>end_time</strong> – the end_time of underlying data</p></li>
+<li><p><strong>segments</strong> – dict
+the segments config for dataset
+Due to the time series dataset (TSDatasetH), the test segments maybe different from start_time and end_time</p></li>
+<li><p><strong>unprepared_dataset</strong> – Optional[DatasetH]
+if user don’t want to load dataset from recorder, please specify user’s dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the instance of DatasetH</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../reference/api.html#qlib.data.dataset.__init__.DatasetH" title="qlib.data.dataset.__init__.DatasetH">DatasetH</a></p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.update.</span></span><span class="sig-name descname"><span class="pre">RecordUpdater</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update a specific recorders</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update info for specific recorder</p>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.update.</span></span><span class="sig-name descname"><span class="pre">DSBasedUpdater</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record:</span> <span class="pre">~qlib.workflow.recorder.Recorder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_date=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_date=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hist_ref:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='day'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fname='pred.pkl'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loader_cls:</span> <span class="pre">type</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'qlib.workflow.online.update.RMDLoader'&gt;</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Dataset-Based Updater</p>
+<ul class="simple">
+<li><p>Providing updating feature for Updating data based on Qlib Dataset</p></li>
+</ul>
+<p>Assumption</p>
+<ul>
+<li><p>Based on Qlib dataset</p></li>
+<li><p>The data to be updated is a multi-level index pd.DataFrame. For example label, prediction.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                         <span class="n">LABEL0</span>
+<span class="n">datetime</span>   <span class="n">instrument</span>
+<span class="mi">2021</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">10</span> <span class="n">SH600000</span>    <span class="mf">0.006965</span>
+           <span class="n">SH600004</span>    <span class="mf">0.003407</span>
+<span class="o">...</span>                         <span class="o">...</span>
+<span class="mi">2021</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">28</span> <span class="n">SZ300498</span>    <span class="mf">0.015748</span>
+           <span class="n">SZ300676</span>   <span class="o">-</span><span class="mf">0.001321</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record:</span> <span class="pre">~qlib.workflow.recorder.Recorder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_date=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_date=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hist_ref:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='day'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fname='pred.pkl'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loader_cls:</span> <span class="pre">type</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'qlib.workflow.online.update.RMDLoader'&gt;</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Init PredUpdater.</p>
+<p>Expected behavior in following cases:</p>
+<ul class="simple">
+<li><p>if <cite>to_date</cite> is greater than the max date in the calendar, the data will be updated to the latest date</p></li>
+<li><p>if there are data before <cite>from_date</cite> or after <cite>to_date</cite>, only the data between <cite>from_date</cite> and <cite>to_date</cite> are affected.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>record</strong> – Recorder</p></li>
+<li><p><strong>to_date</strong> – <p>update to prediction to the <cite>to_date</cite></p>
+<p>if to_date is None:</p>
+<blockquote>
+<div><p>data will updated to the latest date.</p>
+</div></blockquote>
+</p></li>
+<li><p><strong>from_date</strong> – <p>the update will start from <cite>from_date</cite></p>
+<p>if from_date is None:</p>
+<blockquote>
+<div><p>the updating will occur on the next tick after the latest data in historical data</p>
+</div></blockquote>
+</p></li>
+<li><p><strong>hist_ref</strong> – <p>int
+Sometimes, the dataset will have historical depends.
+Leave the problem to users to set the length of historical dependency
+If user doesn’t specify this parameter, Updater will try to load dataset to automatically determine the hist_ref</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>the start_time is not included in the <cite>hist_ref</cite>; So the <cite>hist_ref</cite> will be <cite>step_len - 1</cite> in most cases</p>
+</div>
+</p></li>
+<li><p><strong>loader_cls</strong> – type
+the class to load the model and dataset</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">prepare_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unprepared_dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DatasetH</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">DatasetH</span></span></span></dt>
+<dd><p>Load dataset
+- if unprepared_dataset is specified, then prepare the dataset directly
+- Otherwise,</p>
+<p>Separating this function will make it easier to reuse the dataset</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the instance of DatasetH</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../reference/api.html#qlib.data.dataset.__init__.DatasetH" title="qlib.data.dataset.__init__.DatasetH">DatasetH</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DatasetH</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_new</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">object</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> (<a class="reference internal" href="../reference/api.html#qlib.data.dataset.__init__.DatasetH" title="qlib.data.dataset.__init__.DatasetH"><em>DatasetH</em></a>) – DatasetH: the instance of DatasetH. None for prepare it again.</p></li>
+<li><p><strong>write</strong> (<em>bool</em>) – will the the write action be executed</p></li>
+<li><p><strong>ret_new</strong> (<em>bool</em>) – will the updated data be returned</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the updated dataset</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[object]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_update_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>return the updated data based on the given dataset</p>
+<p>The difference between <cite>get_update_data</cite> and <cite>update</cite>
+- <cite>update_date</cite> only include some data specific feature
+- <cite>update</cite> include some general routine steps(e.g. prepare dataset, checking)</p>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.update.</span></span><span class="sig-name descname"><span class="pre">PredUpdater</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record:</span> <span class="pre">~qlib.workflow.recorder.Recorder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_date=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_date=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hist_ref:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq='day'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fname='pred.pkl'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loader_cls:</span> <span class="pre">type</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'qlib.workflow.online.update.RMDLoader'&gt;</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update the prediction in the Recorder</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_update_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>return the updated data based on the given dataset</p>
+<p>The difference between <cite>get_update_data</cite> and <cite>update</cite>
+- <cite>update_date</cite> only include some data specific feature
+- <cite>update</cite> include some general routine steps(e.g. prepare dataset, checking)</p>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.online.update.</span></span><span class="sig-name descname"><span class="pre">LabelUpdater</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update the label in the recorder</p>
+<p>Assumption
+- The label is generated from record_temp.SignalRecord.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_date</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Init PredUpdater.</p>
+<p>Expected behavior in following cases:</p>
+<ul class="simple">
+<li><p>if <cite>to_date</cite> is greater than the max date in the calendar, the data will be updated to the latest date</p></li>
+<li><p>if there are data before <cite>from_date</cite> or after <cite>to_date</cite>, only the data between <cite>from_date</cite> and <cite>to_date</cite> are affected.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>record</strong> – Recorder</p></li>
+<li><p><strong>to_date</strong> – <p>update to prediction to the <cite>to_date</cite></p>
+<p>if to_date is None:</p>
+<blockquote>
+<div><p>data will updated to the latest date.</p>
+</div></blockquote>
+</p></li>
+<li><p><strong>from_date</strong> – <p>the update will start from <cite>from_date</cite></p>
+<p>if from_date is None:</p>
+<blockquote>
+<div><p>the updating will occur on the next tick after the latest data in historical data</p>
+</div></blockquote>
+</p></li>
+<li><p><strong>hist_ref</strong> – <p>int
+Sometimes, the dataset will have historical depends.
+Leave the problem to users to set the length of historical dependency
+If user doesn’t specify this parameter, Updater will try to load dataset to automatically determine the hist_ref</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>the start_time is not included in the <cite>hist_ref</cite>; So the <cite>hist_ref</cite> will be <cite>step_len - 1</cite> in most cases</p>
+</div>
+</p></li>
+<li><p><strong>loader_cls</strong> – type
+the class to load the model and dataset</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_update_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>return the updated data based on the given dataset</p>
+<p>The difference between <cite>get_update_data</cite> and <cite>update</cite>
+- <cite>update_date</cite> only include some data specific feature
+- <cite>update</cite> include some general routine steps(e.g. prepare dataset, checking)</p>
+</dd></dl>
+</dd></dl>
+</section>
+</section>
+</div>
+</body>
+</html>

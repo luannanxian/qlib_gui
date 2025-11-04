@@ -1,0 +1,489 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="task-management">
+<span id="id1"></span><h1>Task Management<a class="headerlink" href="#task-management" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p>The <a class="reference external" href="../component/introduction.html">Workflow</a> part introduces how to run research workflow in a loosely-coupled way. But it can only execute one <code class="docutils literal notranslate"><span class="pre">task</span></code> when you use <code class="docutils literal notranslate"><span class="pre">qrun</span></code>.
+To automatically generate and execute different tasks, <code class="docutils literal notranslate"><span class="pre">Task</span> <span class="pre">Management</span></code> provides a whole process including <a class="reference internal" href="#task-generating">Task Generating</a>, <a class="reference internal" href="#task-storing">Task Storing</a>, <a class="reference internal" href="#task-training">Task Training</a> and <a class="reference internal" href="#task-collecting">Task Collecting</a>.
+With this module, users can run their <code class="docutils literal notranslate"><span class="pre">task</span></code> automatically at different periods, in different losses, or even by different models.The processes of task generation, model training and combine and collect data are shown in the following figure.</p>
+<img alt="../_images/Task-Gen-Recorder-Collector.svg" class="align-center" src="../_images/Task-Gen-Recorder-Collector.svg"/><p>This whole process can be used in <a class="reference external" href="../component/online.html">Online Serving</a>.</p>
+<p>An example of the entire process is shown <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/examples/model_rolling/task_manager_rolling.py">here</a>.</p>
+</section>
+<section id="task-generating">
+<h2>Task Generating<a class="headerlink" href="#task-generating" title="Permalink to this heading"></a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">task</span></code> consists of <cite>Model</cite>, <cite>Dataset</cite>, <cite>Record</cite>, or anything added by users.
+The specific task template can be viewed in
+<a class="reference external" href="../component/workflow.html#task-section">Task Section</a>.
+Even though the task template is fixed, users can customize their <code class="docutils literal notranslate"><span class="pre">TaskGen</span></code> to generate different <code class="docutils literal notranslate"><span class="pre">task</span></code> by task template.</p>
+<p>Here is the base class of <code class="docutils literal notranslate"><span class="pre">TaskGen</span></code>:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.task.gen.</span></span><span class="sig-name descname"><span class="pre">TaskGen</span></span></dt>
+<dd><p>The base class for generating different tasks</p>
+<p>Example 1:</p>
+<blockquote>
+<div><p>input: a specific task template and rolling steps</p>
+<p>output: rolling version of the tasks</p>
+</div></blockquote>
+<p>Example 2:</p>
+<blockquote>
+<div><p>input: a specific task template and losses list</p>
+<p>output: a set of tasks with different losses</p>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Generate different tasks based on a task template</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task</strong> (<em>dict</em>) – a task template</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of tasks</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>List</em>[dict]</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a class <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/qlib/workflow/task/gen.py">RollingGen</a> to generate a list of <code class="docutils literal notranslate"><span class="pre">task</span></code> of the dataset in different date segments.
+This class allows users to verify the effect of data from different periods on the model in one experiment. More information is <a class="reference external" href="../reference/api.html#TaskGen">here</a>.</p>
+</section>
+<section id="task-storing">
+<h2>Task Storing<a class="headerlink" href="#task-storing" title="Permalink to this heading"></a></h2>
+<p>To achieve higher efficiency and the possibility of cluster operation, <code class="docutils literal notranslate"><span class="pre">Task</span> <span class="pre">Manager</span></code> will store all tasks in <a class="reference external" href="https://www.mongodb.com/">MongoDB</a>.
+<code class="docutils literal notranslate"><span class="pre">TaskManager</span></code> can fetch undone tasks automatically and manage the lifecycle of a set of tasks with error handling.
+Users <strong>MUST</strong> finish the configuration of <a class="reference external" href="https://www.mongodb.com/">MongoDB</a> when using this module.</p>
+<p>Users need to provide the MongoDB URL and database name for using <code class="docutils literal notranslate"><span class="pre">TaskManager</span></code> in <a class="reference external" href="../start/initialization.html#Parameters">initialization</a> or make a statement like this.</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">C</span>
+<span class="n">C</span><span class="p">[</span><span class="s2">"mongo"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"task_url"</span> <span class="p">:</span> <span class="s2">"mongodb://localhost:27017/"</span><span class="p">,</span> <span class="c1"># your MongoDB url</span>
+    <span class="s2">"task_db_name"</span> <span class="p">:</span> <span class="s2">"rolling_db"</span> <span class="c1"># database name</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div></blockquote>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.task.manage.</span></span><span class="sig-name descname"><span class="pre">TaskManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_pool</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Here is what will a task looks like when it created by TaskManager</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">'def'</span><span class="p">:</span> <span class="n">pickle</span> <span class="n">serialized</span> <span class="n">task</span> <span class="n">definition</span><span class="o">.</span>  <span class="n">using</span> <span class="n">pickle</span> <span class="n">will</span> <span class="n">make</span> <span class="n">it</span> <span class="n">easier</span>
+    <span class="s1">'filter'</span><span class="p">:</span> <span class="n">json</span><span class="o">-</span><span class="n">like</span> <span class="n">data</span><span class="o">.</span> <span class="n">This</span> <span class="ow">is</span> <span class="k">for</span> <span class="n">filtering</span> <span class="n">the</span> <span class="n">tasks</span><span class="o">.</span>
+    <span class="s1">'status'</span><span class="p">:</span> <span class="s1">'waiting'</span> <span class="o">|</span> <span class="s1">'running'</span> <span class="o">|</span> <span class="s1">'done'</span>
+    <span class="s1">'res'</span><span class="p">:</span> <span class="n">pickle</span> <span class="n">serialized</span> <span class="n">task</span> <span class="n">result</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The tasks manager assumes that you will only update the tasks you fetched.
+The mongo fetch one and update will make it date updating secure.</p>
+<p>This class can be used as a tool from commandline. Here are several examples.
+You can view the help of manage module with the following commands:
+python -m qlib.workflow.task.manage -h # show manual of manage module CLI
+python -m qlib.workflow.task.manage wait -h # show manual of the wait command of manage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>qlib.workflow.task.manage<span class="w"> </span>-t<span class="w"> </span>&lt;pool_name&gt;<span class="w"> </span><span class="nb">wait</span>
+python<span class="w"> </span>-m<span class="w"> </span>qlib.workflow.task.manage<span class="w"> </span>-t<span class="w"> </span>&lt;pool_name&gt;<span class="w"> </span>task_stat
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Assumption: the data in MongoDB was encoded and the data out of MongoDB was decoded</p>
+</div>
+<p>Here are four status which are:</p>
+<blockquote>
+<div><p>STATUS_WAITING: waiting for training</p>
+<p>STATUS_RUNNING: training</p>
+<p>STATUS_PART_DONE: finished some step and waiting for next step</p>
+<p>STATUS_DONE: all work done</p>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_pool</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Init Task Manager, remember to make the statement of MongoDB url and database name firstly.
+A TaskManager instance serves a specific task pool.
+The static method of this module serves the whole MongoDB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task_pool</strong> (<em>str</em>) – the name of Collection in MongoDB</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
+<dd><p>List the all collection(task_pool) of the db.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">replace_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_task</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Use a new task to replace a old one</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – old task</p></li>
+<li><p><strong>new_task</strong> – new task</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">insert_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Insert a task.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task</strong> – the task waiting for insert</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>pymongo.results.InsertOneResult</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">insert_task_def</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_def</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Insert a task to task_pool</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task_def</strong> (<em>dict</em>) – the task definition</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pymongo.results.InsertOneResult</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">create_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_def_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_nt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>If the tasks in task_def_l are new, then insert new tasks into the task_pool, and record inserted_id.
+If a task is not new, then just query its _id.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_def_l</strong> (<em>list</em>) – a list of task</p></li>
+<li><p><strong>dry_run</strong> (<em>bool</em>) – if insert those new tasks to task pool</p></li>
+<li><p><strong>print_nt</strong> (<em>bool</em>) – if print new task</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of the _id of task_def_l</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">fetch_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'waiting'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<dd><p>Use query to fetch tasks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> (<em>dict</em><em>, </em><em>optional</em>) – query dict. Defaults to {}.</p></li>
+<li><p><strong>status</strong> (<em>str</em><em>, </em><em>optional</em>) – [description]. Defaults to STATUS_WAITING.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a task(document in collection) after decoding</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">safe_fetch_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'waiting'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Fetch task from task_pool using query with contextmanager</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<em>dict</em>) – the dict of query</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>dict</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a task(document in collection) after decoding</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Query task in collection.
+This function may raise exception <cite>pymongo.errors.CursorNotFound: cursor id not found</cite> if it takes too long to iterate the generator</p>
+<p>python -m qlib.workflow.task.manage -t &lt;your task pool&gt; query ‘{“_id”: “615498be837d0053acbc5d58”}’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> (<em>dict</em>) – the dict of query</p></li>
+<li><p><strong>decode</strong> (<em>bool</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>dict</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a task(document in collection) after decoding</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">re_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_id</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<dd><p>Use _id to query task.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>_id</strong> (<em>str</em>) – _id of a document</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a task(document in collection) after decoding</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_task_res</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">res</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'done'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Commit the result to task[‘res’].</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<em>[</em><em>type</em><em>]</em>) – [description]</p></li>
+<li><p><strong>res</strong> (<em>object</em>) – the result you want to save</p></li>
+<li><p><strong>status</strong> (<em>str</em><em>, </em><em>optional</em>) – STATUS_WAITING, STATUS_RUNNING, STATUS_DONE, STATUS_PART_DONE. Defaults to STATUS_DONE.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">return_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'waiting'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Return a task to status. Always using in error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<em>[</em><em>type</em><em>]</em>) – [description]</p></li>
+<li><p><strong>status</strong> (<em>str</em><em>, </em><em>optional</em>) – STATUS_WAITING, STATUS_RUNNING, STATUS_DONE, STATUS_PART_DONE. Defaults to STATUS_WAITING.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">remove</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Remove the task using query</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<em>dict</em>) – the dict of query</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">task_stat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span></dt>
+<dd><p>Count the tasks in every status.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<em>dict</em><em>, </em><em>optional</em>) – the query dict. Defaults to {}.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">reset_waiting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Reset all running task into waiting status. Can be used when some running task exit unexpected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<em>dict</em><em>, </em><em>optional</em>) – the query dict. Defaults to {}.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">prioritize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Set priority for task</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<em>dict</em>) – The task query from the database</p></li>
+<li><p><strong>priority</strong> (<em>int</em>) – the target priority</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">wait</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>When multiprocessing, the main progress may fetch nothing from TaskManager because there are still some running tasks.
+So main progress should wait until all tasks are trained well by other progress or machines.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query</strong> (<em>dict</em><em>, </em><em>optional</em>) – the query dict. Defaults to {}.</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p>More information of <code class="docutils literal notranslate"><span class="pre">Task</span> <span class="pre">Manager</span></code> can be found in <a class="reference external" href="../reference/api.html#TaskManager">here</a>.</p>
+</section>
+<section id="task-training">
+<h2>Task Training<a class="headerlink" href="#task-training" title="Permalink to this heading"></a></h2>
+<p>After generating and storing those <code class="docutils literal notranslate"><span class="pre">task</span></code>, it’s time to run the <code class="docutils literal notranslate"><span class="pre">task</span></code> which is in the <em>WAITING</em> status.
+<code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a method called <code class="docutils literal notranslate"><span class="pre">run_task</span></code> to run those <code class="docutils literal notranslate"><span class="pre">task</span></code> in task pool, however, users can also customize how tasks are executed.
+An easy way to get the <code class="docutils literal notranslate"><span class="pre">task_func</span></code> is using <code class="docutils literal notranslate"><span class="pre">qlib.model.trainer.task_train</span></code> directly.
+It will run the whole workflow defined by <code class="docutils literal notranslate"><span class="pre">task</span></code>, which includes <em>Model</em>, <em>Dataset</em>, <em>Record</em>.</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">qlib.workflow.task.manage.</span></span><span class="sig-name descname"><span class="pre">run_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_pool</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_release</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">before_status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'waiting'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">after_status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'done'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>While the task pool is not empty (has WAITING tasks), use task_func to fetch and run tasks in task_pool</p>
+<p>After running this method, here are 4 situations (before_status -&gt; after_status):</p>
+<blockquote>
+<div><p>STATUS_WAITING -&gt; STATUS_DONE: use task[“def”] as <cite>task_func</cite> param, it means that the task has not been started</p>
+<p>STATUS_WAITING -&gt; STATUS_PART_DONE: use task[“def”] as <cite>task_func</cite> param</p>
+<p>STATUS_PART_DONE -&gt; STATUS_PART_DONE: use task[“res”] as <cite>task_func</cite> param, it means that the task has been started but not completed</p>
+<p>STATUS_PART_DONE -&gt; STATUS_DONE: use task[“res”] as <cite>task_func</cite> param</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_func</strong> (<em>Callable</em>) – <p>def (task_def, **kwargs) -&gt; &lt;res which will be committed&gt;</p>
+<p>the function to run the task</p>
+</p></li>
+<li><p><strong>task_pool</strong> (<em>str</em>) – the name of the task pool (Collection in MongoDB)</p></li>
+<li><p><strong>query</strong> (<em>dict</em>) – will use this dict to query task_pool when fetching task</p></li>
+<li><p><strong>force_release</strong> (<em>bool</em>) – will the program force to release the resource</p></li>
+<li><p><strong>before_status</strong> (<em>str:</em>) – the tasks in before_status will be fetched and trained. Can be STATUS_WAITING, STATUS_PART_DONE.</p></li>
+<li><p><strong>after_status</strong> (<em>str:</em>) – the tasks after trained will become after_status. Can be STATUS_WAITING, STATUS_PART_DONE.</p></li>
+<li><p><strong>kwargs</strong> – the params for <cite>task_func</cite></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<p>Meanwhile, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a module called <code class="docutils literal notranslate"><span class="pre">Trainer</span></code>.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.model.trainer.</span></span><span class="sig-name descname"><span class="pre">Trainer</span></span></dt>
+<dd><p>The trainer can train a list of models.
+There are Trainer and DelayTrainer, which can be distinguished by when it will finish real training.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tasks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
+<dd><p>Given a list of task definitions, begin training, and return the models.</p>
+<p>For Trainer, it finishes real training in this method.
+For DelayTrainer, it only does some preparation in this method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tasks</strong> – a list of tasks</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of models</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">end_train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
+<dd><p>Given a list of models, finished something at the end of training if you need.
+The models may be Recorder, txt file, database, and so on.</p>
+<p>For Trainer, it does some finishing touches in this method.
+For DelayTrainer, it finishes real training in this method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>models</strong> – a list of models</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of models</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">is_delay</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span></dt>
+<dd><p>If Trainer will delay finishing <cite>end_train</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>if DelayTrainer</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">has_worker</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span></dt>
+<dd><p>Some trainer has backend worker to support parallel training
+This method can tell if the worker is enabled.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>if the worker is enabled</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">worker</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>start the worker</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError:</strong> – If the worker is not supported</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p><code class="docutils literal notranslate"><span class="pre">Trainer</span></code> will train a list of tasks and return a list of model recorders.
+<code class="docutils literal notranslate"><span class="pre">Qlib</span></code> offer two kinds of Trainer, TrainerR is the simplest way and TrainerRM is based on TaskManager to help manager tasks lifecycle automatically.
+If you do not want to use <code class="docutils literal notranslate"><span class="pre">Task</span> <span class="pre">Manager</span></code> to manage tasks, then use TrainerR to train a list of tasks generated by <code class="docutils literal notranslate"><span class="pre">TaskGen</span></code> is enough.
+<a class="reference external" href="../reference/api.html#Trainer">Here</a> are the details about different <code class="docutils literal notranslate"><span class="pre">Trainer</span></code>.</p>
+</section>
+<section id="task-collecting">
+<h2>Task Collecting<a class="headerlink" href="#task-collecting" title="Permalink to this heading"></a></h2>
+<p>Before collecting model training results, you need to use the <code class="docutils literal notranslate"><span class="pre">qlib.init</span></code> to specify the path of mlruns.</p>
+<p>To collect the results of <code class="docutils literal notranslate"><span class="pre">task</span></code> after training, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides <a class="reference external" href="../reference/api.html#Collector">Collector</a>, <a class="reference external" href="../reference/api.html#Group">Group</a> and <a class="reference external" href="../reference/api.html#Ensemble">Ensemble</a> to collect the results in a readable, expandable and loosely-coupled way.</p>
+<p><a class="reference external" href="../reference/api.html#Collector">Collector</a> can collect objects from everywhere and process them such as merging, grouping, averaging and so on. It has 2 step action including <code class="docutils literal notranslate"><span class="pre">collect</span></code> (collect anything in a dict) and <code class="docutils literal notranslate"><span class="pre">process_collect</span></code> (process collected dict).</p>
+<p><a class="reference external" href="../reference/api.html#Group">Group</a> also has 2 steps including <code class="docutils literal notranslate"><span class="pre">group</span></code> (can group a set of object based on <cite>group_func</cite> and change them to a dict) and <code class="docutils literal notranslate"><span class="pre">reduce</span></code> (can make a dict become an ensemble based on some rule).
+For example: {(A,B,C1): object, (A,B,C2): object} —<code class="docutils literal notranslate"><span class="pre">group</span></code>—&gt; {(A,B): {C1: object, C2: object}} —<code class="docutils literal notranslate"><span class="pre">reduce</span></code>—&gt; {(A,B): object}</p>
+<p><a class="reference external" href="../reference/api.html#Ensemble">Ensemble</a> can merge the objects in an ensemble.
+For example: {C1: object, C2: object} —<code class="docutils literal notranslate"><span class="pre">Ensemble</span></code>—&gt; object.
+You can set the ensembles you want in the <code class="docutils literal notranslate"><span class="pre">Collector</span></code>’s process_list.
+Common ensembles include <code class="docutils literal notranslate"><span class="pre">AverageEnsemble</span></code> and <code class="docutils literal notranslate"><span class="pre">RollingEnsemble</span></code>. Average ensemble is used to ensemble the results of different models in the same time period. Rollingensemble is used to ensemble the results of different models in the same time period</p>
+<p>So the hierarchy is <code class="docutils literal notranslate"><span class="pre">Collector</span></code>’s second step corresponds to <code class="docutils literal notranslate"><span class="pre">Group</span></code>. And <code class="docutils literal notranslate"><span class="pre">Group</span></code>’s second step correspond to <code class="docutils literal notranslate"><span class="pre">Ensemble</span></code>.</p>
+<p>For more information, please see <a class="reference external" href="../reference/api.html#Collector">Collector</a>, <a class="reference external" href="../reference/api.html#Group">Group</a> and <a class="reference external" href="../reference/api.html#Ensemble">Ensemble</a>, or the <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/examples/model_rolling/task_manager_rolling.py">example</a>.</p>
+</section>
+</section>
+</div>
+</body>
+</html>

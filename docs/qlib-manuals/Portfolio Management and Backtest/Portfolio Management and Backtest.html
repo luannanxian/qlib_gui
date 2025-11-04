@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="portfolio-strategy-portfolio-management">
+<span id="strategy"></span><h1>Portfolio Strategy: Portfolio Management<a class="headerlink" href="#portfolio-strategy-portfolio-management" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Portfolio</span> <span class="pre">Strategy</span></code> is designed to adopt different portfolio strategies, which means that users can adopt different algorithms to generate investment portfolios based on the prediction scores of the <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code>. Users can use the <code class="docutils literal notranslate"><span class="pre">Portfolio</span> <span class="pre">Strategy</span></code> in an automatic workflow by <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> module, please refer to <a class="reference external" href="workflow.html">Workflow: Workflow Management</a>.</p>
+<p>Because the components in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> are designed in a loosely-coupled way, <code class="docutils literal notranslate"><span class="pre">Portfolio</span> <span class="pre">Strategy</span></code> can be used as an independent module also.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides several implemented portfolio strategies. Also, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> supports custom strategy, users can customize strategies according to their own requirements.</p>
+<p>After users specifying the models(forecasting signals) and strategies, running backtest will help users to check the performance of a custom model(forecasting signals)/strategy.</p>
+</section>
+<section id="base-class-interface">
+<h2>Base Class &amp; Interface<a class="headerlink" href="#base-class-interface" title="Permalink to this heading"></a></h2>
+<section id="basestrategy">
+<h3>BaseStrategy<a class="headerlink" href="#basestrategy" title="Permalink to this heading"></a></h3>
+<p>Qlib provides a base class <code class="docutils literal notranslate"><span class="pre">qlib.strategy.base.BaseStrategy</span></code>. All strategy classes need to inherit the base class and implement its interface.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>generate_trade_decision</cite></dt><dd><p>generate_trade_decision is a key interface that generates trade decisions in each trading bar.
+The frequency to call this method depends on the executor frequency(“time_per_step”=”day” by default). But the trading frequency can be decided by users’ implementation.
+For example, if the user wants to trading in weekly while the <cite>time_per_step</cite> is “day” in executor, user can return non-empty TradeDecision weekly(otherwise return empty like <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/contrib/strategy/signal_strategy.py#L132">this</a> ).</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Users can inherit <cite>BaseStrategy</cite> to customize their strategy class.</p>
+</section>
+<section id="weightstrategybase">
+<h3>WeightStrategyBase<a class="headerlink" href="#weightstrategybase" title="Permalink to this heading"></a></h3>
+<p>Qlib also provides a class <code class="docutils literal notranslate"><span class="pre">qlib.contrib.strategy.WeightStrategyBase</span></code> that is a subclass of <cite>BaseStrategy</cite>.</p>
+<p><cite>WeightStrategyBase</cite> only focuses on the target positions, and automatically generates an order list based on positions. It provides the <cite>generate_target_weight_position</cite> interface.</p>
+<ul>
+<li><dl>
+<dt><cite>generate_target_weight_position</cite></dt><dd><ul class="simple">
+<li><p>According to the current position and trading date to generate the target position. The cash is not considered in
+the output weight distribution.</p></li>
+<li><p>Return the target position.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Here the <cite>target position</cite> means the target percentage of total assets.</p>
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+<p><cite>WeightStrategyBase</cite> implements the interface <cite>generate_order_list</cite>, whose processions is as follows.</p>
+<ul class="simple">
+<li><p>Call <cite>generate_target_weight_position</cite> method to generate the target position.</p></li>
+<li><p>Generate the target amount of stocks from the target position.</p></li>
+<li><p>Generate the order list from the target amount</p></li>
+</ul>
+<p>Users can inherit <cite>WeightStrategyBase</cite> and implement the interface <cite>generate_target_weight_position</cite> to customize their strategy class, which only focuses on the target positions.</p>
+</section>
+</section>
+<section id="implemented-strategy">
+<h2>Implemented Strategy<a class="headerlink" href="#implemented-strategy" title="Permalink to this heading"></a></h2>
+<p>Qlib provides a implemented strategy classes named <cite>TopkDropoutStrategy</cite>.</p>
+<section id="topkdropoutstrategy">
+<h3>TopkDropoutStrategy<a class="headerlink" href="#topkdropoutstrategy" title="Permalink to this heading"></a></h3>
+<p><cite>TopkDropoutStrategy</cite> is a subclass of <cite>BaseStrategy</cite> and implement the interface <cite>generate_order_list</cite> whose process is as follows.</p>
+<ul>
+<li><p>Adopt the <code class="docutils literal notranslate"><span class="pre">Topk-Drop</span></code> algorithm to calculate the target amount of each stock</p>
+<blockquote>
+<div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There are two parameters for the <code class="docutils literal notranslate"><span class="pre">Topk-Drop</span></code> algorithm:</p>
+<ul class="simple">
+<li><p><cite>Topk</cite>: The number of stocks held</p></li>
+<li><p><cite>Drop</cite>: The number of stocks sold on each trading day</p></li>
+</ul>
+<p>In general, the number of stocks currently held is <cite>Topk</cite>, with the exception of being zero at the beginning period of trading.
+For each trading day, let $d$ be the number of the instruments currently held and with a rank $gt K$ when ranked by the prediction scores from high to low.
+Then <cite>d</cite> number of stocks currently held with the worst <cite>prediction score</cite> will be sold, and the same number of unheld stocks with the best <cite>prediction score</cite> will be bought.</p>
+<p>In general, $d=$`Drop`, especially when the pool of the candidate instruments is large, $K$ is large, and <cite>Drop</cite> is small.</p>
+<p>In most cases, <code class="docutils literal notranslate"><span class="pre">TopkDrop</span></code> algorithm sells and buys <cite>Drop</cite> stocks every trading day, which yields a turnover rate of 2$times$`Drop`/$K$.</p>
+<p>The following images illustrate a typical scenario.</p>
+<img alt="Topk-Drop" src="../_images/topk_drop.png"/>
+</div>
+</div></blockquote>
+</li>
+<li><p>Generate the order list from the target amount</p></li>
+</ul>
+</section>
+<section id="enhancedindexingstrategy">
+<h3>EnhancedIndexingStrategy<a class="headerlink" href="#enhancedindexingstrategy" title="Permalink to this heading"></a></h3>
+<p><cite>EnhancedIndexingStrategy</cite> Enhanced indexing combines the arts of active management and passive management,
+with the aim of outperforming a benchmark index (e.g., S&amp;P 500) in terms of portfolio return while controlling
+the risk exposure (a.k.a. tracking error).</p>
+<p>For more information, please refer to <cite>qlib.contrib.strategy.signal_strategy.EnhancedIndexingStrategy</cite>
+and <cite>qlib.contrib.strategy.optimizer.enhanced_indexing.EnhancedIndexingOptimizer</cite>.</p>
+</section>
+</section>
+<section id="usage-example">
+<h2>Usage &amp; Example<a class="headerlink" href="#usage-example" title="Permalink to this heading"></a></h2>
+<p>First, user can create a model to get trading signals(the variable name is <code class="docutils literal notranslate"><span class="pre">pred_score</span></code> in following cases).</p>
+<section id="prediction-score">
+<h3>Prediction Score<a class="headerlink" href="#prediction-score" title="Permalink to this heading"></a></h3>
+<p>The <cite>prediction score</cite> is a pandas DataFrame. Its index is &lt;datetime(pd.Timestamp), instrument(str)&gt; and it must
+contains a <cite>score</cite> column.</p>
+<p>A prediction sample is shown as follows.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>  <span class="n">datetime</span> <span class="n">instrument</span>     <span class="n">score</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span>   <span class="n">SH600000</span> <span class="o">-</span><span class="mf">0.505488</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span>   <span class="n">SZ002531</span> <span class="o">-</span><span class="mf">0.320391</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span>   <span class="n">SZ000999</span>  <span class="mf">0.583808</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span>   <span class="n">SZ300569</span>  <span class="mf">0.819628</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span>   <span class="n">SZ001696</span> <span class="o">-</span><span class="mf">0.137140</span>
+             <span class="o">...</span>            <span class="o">...</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">30</span>   <span class="n">SZ000996</span> <span class="o">-</span><span class="mf">1.027618</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">30</span>   <span class="n">SH603127</span>  <span class="mf">0.225677</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">30</span>   <span class="n">SH603126</span>  <span class="mf">0.462443</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">30</span>   <span class="n">SH603133</span> <span class="o">-</span><span class="mf">0.302460</span>
+<span class="mi">2019</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">30</span>   <span class="n">SZ300760</span> <span class="o">-</span><span class="mf">0.126383</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code> module can make predictions, please refer to <a class="reference external" href="model.html">Forecast Model: Model Training &amp; Prediction</a>.</p>
+<p>Normally, the prediction score is the output of the models. But some models are learned from a label with a different scale. So the scale of the prediction score may be different from your expectation(e.g. the return of instruments).</p>
+<p>Qlib didn’t add a step to scale the prediction score to a unified scale due to the following reasons.
+- Because not every trading strategy cares about the scale(e.g. TopkDropoutStrategy only cares about the order).  So the strategy is responsible for rescaling the prediction score(e.g. some portfolio-optimization-based strategies may require a meaningful scale).
+- The model has the flexibility to define the target, loss, and data processing. So we don’t think there is a silver bullet to rescale it back directly barely based on the model’s outputs. If you want to scale it back to some meaningful values(e.g. stock returns.), an intuitive solution is to create a regression model for the model’s recent outputs and your recent target values.</p>
+</section>
+<section id="running-backtest">
+<h3>Running backtest<a class="headerlink" href="#running-backtest" title="Permalink to this heading"></a></h3>
+<ul>
+<li><p>In most cases, users could backtest their portfolio management strategy  with <code class="docutils literal notranslate"><span class="pre">backtest_daily</span></code>.</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pprint</span><span class="w"> </span><span class="kn">import</span> <span class="n">pprint</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">qlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.utils.time</span><span class="w"> </span><span class="kn">import</span> <span class="n">Freq</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">flatten_dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.evaluate</span><span class="w"> </span><span class="kn">import</span> <span class="n">backtest_daily</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.evaluate</span><span class="w"> </span><span class="kn">import</span> <span class="n">risk_analysis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">TopkDropoutStrategy</span>
+
+<span class="c1"># init qlib</span>
+<span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=&lt;</span><span class="n">qlib</span> <span class="n">data</span> <span class="nb">dir</span><span class="o">&gt;</span><span class="p">)</span>
+
+<span class="n">CSI300_BENCH</span> <span class="o">=</span> <span class="s2">"SH000300"</span>
+<span class="n">STRATEGY_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"topk"</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s2">"n_drop"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="c1"># pred_score, pd.Series</span>
+    <span class="s2">"signal"</span><span class="p">:</span> <span class="n">pred_score</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="n">strategy_obj</span> <span class="o">=</span> <span class="n">TopkDropoutStrategy</span><span class="p">(</span><span class="o">**</span><span class="n">STRATEGY_CONFIG</span><span class="p">)</span>
+<span class="n">report_normal</span><span class="p">,</span> <span class="n">positions_normal</span> <span class="o">=</span> <span class="n">backtest_daily</span><span class="p">(</span>
+    <span class="n">start_time</span><span class="o">=</span><span class="s2">"2017-01-01"</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s2">"2020-08-01"</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="n">strategy_obj</span>
+<span class="p">)</span>
+<span class="n">analysis</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="c1"># default frequency will be daily (i.e. "day")</span>
+<span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_without_cost"</span><span class="p">]</span> <span class="o">=</span> <span class="n">risk_analysis</span><span class="p">(</span><span class="n">report_normal</span><span class="p">[</span><span class="s2">"return"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"bench"</span><span class="p">])</span>
+<span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_with_cost"</span><span class="p">]</span> <span class="o">=</span> <span class="n">risk_analysis</span><span class="p">(</span><span class="n">report_normal</span><span class="p">[</span><span class="s2">"return"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"bench"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"cost"</span><span class="p">])</span>
+
+<span class="n">analysis_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">analysis</span><span class="p">)</span>  <span class="c1"># type: pd.DataFrame</span>
+<span class="n">pprint</span><span class="p">(</span><span class="n">analysis_df</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>If users would like to control their strategies in a more detailed(e.g. users have a more advanced version of executor), user could follow this example.</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pprint</span><span class="w"> </span><span class="kn">import</span> <span class="n">pprint</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">qlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.utils.time</span><span class="w"> </span><span class="kn">import</span> <span class="n">Freq</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">flatten_dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.backtest</span><span class="w"> </span><span class="kn">import</span> <span class="n">backtest</span><span class="p">,</span> <span class="n">executor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.evaluate</span><span class="w"> </span><span class="kn">import</span> <span class="n">risk_analysis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">TopkDropoutStrategy</span>
+
+<span class="c1"># init qlib</span>
+<span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=&lt;</span><span class="n">qlib</span> <span class="n">data</span> <span class="nb">dir</span><span class="o">&gt;</span><span class="p">)</span>
+
+<span class="n">CSI300_BENCH</span> <span class="o">=</span> <span class="s2">"SH000300"</span>
+<span class="c1"># Benchmark is for calculating the excess return of your strategy.</span>
+<span class="c1"># Its data format will be like **ONE normal instrument**.</span>
+<span class="c1"># For example, you can query its data with the code below</span>
+<span class="c1"># `D.features(["SH000300"], ["$close"], start_time='2010-01-01', end_time='2017-12-31', freq='day')`</span>
+<span class="c1"># It is different from the argument `market`, which indicates a universe of stocks (e.g. **A SET** of stocks like csi300)</span>
+<span class="c1"># For example, you can query all data from a stock market with the code below.</span>
+<span class="c1"># ` D.features(D.instruments(market='csi300'), ["$close"], start_time='2010-01-01', end_time='2017-12-31', freq='day')`</span>
+
+<span class="n">FREQ</span> <span class="o">=</span> <span class="s2">"day"</span>
+<span class="n">STRATEGY_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"topk"</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s2">"n_drop"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="c1"># pred_score, pd.Series</span>
+    <span class="s2">"signal"</span><span class="p">:</span> <span class="n">pred_score</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">EXECUTOR_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"time_per_step"</span><span class="p">:</span> <span class="s2">"day"</span><span class="p">,</span>
+    <span class="s2">"generate_portfolio_metrics"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">backtest_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"start_time"</span><span class="p">:</span> <span class="s2">"2017-01-01"</span><span class="p">,</span>
+    <span class="s2">"end_time"</span><span class="p">:</span> <span class="s2">"2020-08-01"</span><span class="p">,</span>
+    <span class="s2">"account"</span><span class="p">:</span> <span class="mi">100000000</span><span class="p">,</span>
+    <span class="s2">"benchmark"</span><span class="p">:</span> <span class="n">CSI300_BENCH</span><span class="p">,</span>
+    <span class="s2">"exchange_kwargs"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"freq"</span><span class="p">:</span> <span class="n">FREQ</span><span class="p">,</span>
+        <span class="s2">"limit_threshold"</span><span class="p">:</span> <span class="mf">0.095</span><span class="p">,</span>
+        <span class="s2">"deal_price"</span><span class="p">:</span> <span class="s2">"close"</span><span class="p">,</span>
+        <span class="s2">"open_cost"</span><span class="p">:</span> <span class="mf">0.0005</span><span class="p">,</span>
+        <span class="s2">"close_cost"</span><span class="p">:</span> <span class="mf">0.0015</span><span class="p">,</span>
+        <span class="s2">"min_cost"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<span class="c1"># strategy object</span>
+<span class="n">strategy_obj</span> <span class="o">=</span> <span class="n">TopkDropoutStrategy</span><span class="p">(</span><span class="o">**</span><span class="n">STRATEGY_CONFIG</span><span class="p">)</span>
+<span class="c1"># executor object</span>
+<span class="n">executor_obj</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">SimulatorExecutor</span><span class="p">(</span><span class="o">**</span><span class="n">EXECUTOR_CONFIG</span><span class="p">)</span>
+<span class="c1"># backtest</span>
+<span class="n">portfolio_metric_dict</span><span class="p">,</span> <span class="n">indicator_dict</span> <span class="o">=</span> <span class="n">backtest</span><span class="p">(</span><span class="n">executor</span><span class="o">=</span><span class="n">executor_obj</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="n">strategy_obj</span><span class="p">,</span> <span class="o">**</span><span class="n">backtest_config</span><span class="p">)</span>
+<span class="n">analysis_freq</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{0}{1}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">Freq</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">FREQ</span><span class="p">))</span>
+<span class="c1"># backtest info</span>
+<span class="n">report_normal</span><span class="p">,</span> <span class="n">positions_normal</span> <span class="o">=</span> <span class="n">portfolio_metric_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">analysis_freq</span><span class="p">)</span>
+
+<span class="c1"># analysis</span>
+<span class="n">analysis</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_without_cost"</span><span class="p">]</span> <span class="o">=</span> <span class="n">risk_analysis</span><span class="p">(</span>
+    <span class="n">report_normal</span><span class="p">[</span><span class="s2">"return"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"bench"</span><span class="p">],</span> <span class="n">freq</span><span class="o">=</span><span class="n">analysis_freq</span>
+<span class="p">)</span>
+<span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_with_cost"</span><span class="p">]</span> <span class="o">=</span> <span class="n">risk_analysis</span><span class="p">(</span>
+    <span class="n">report_normal</span><span class="p">[</span><span class="s2">"return"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"bench"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"cost"</span><span class="p">],</span> <span class="n">freq</span><span class="o">=</span><span class="n">analysis_freq</span>
+<span class="p">)</span>
+
+<span class="n">analysis_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">analysis</span><span class="p">)</span>  <span class="c1"># type: pd.DataFrame</span>
+<span class="c1"># log metrics</span>
+<span class="n">analysis_dict</span> <span class="o">=</span> <span class="n">flatten_dict</span><span class="p">(</span><span class="n">analysis_df</span><span class="p">[</span><span class="s2">"risk"</span><span class="p">]</span><span class="o">.</span><span class="n">unstack</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>
+<span class="c1"># print out results</span>
+<span class="n">pprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">"The following are analysis results of benchmark return(</span><span class="si">{</span><span class="n">analysis_freq</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
+<span class="n">pprint</span><span class="p">(</span><span class="n">risk_analysis</span><span class="p">(</span><span class="n">report_normal</span><span class="p">[</span><span class="s2">"bench"</span><span class="p">],</span> <span class="n">freq</span><span class="o">=</span><span class="n">analysis_freq</span><span class="p">))</span>
+<span class="n">pprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">"The following are analysis results of the excess return without cost(</span><span class="si">{</span><span class="n">analysis_freq</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
+<span class="n">pprint</span><span class="p">(</span><span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_without_cost"</span><span class="p">])</span>
+<span class="n">pprint</span><span class="p">(</span><span class="sa">f</span><span class="s2">"The following are analysis results of the excess return with cost(</span><span class="si">{</span><span class="n">analysis_freq</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
+<span class="n">pprint</span><span class="p">(</span><span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_with_cost"</span><span class="p">])</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="result">
+<h3>Result<a class="headerlink" href="#result" title="Permalink to this heading"></a></h3>
+<p>The backtest results are in the following form:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>                                                  <span class="n">risk</span>
+<span class="n">excess_return_without_cost</span> <span class="n">mean</span>               <span class="mf">0.000605</span>
+                           <span class="n">std</span>                <span class="mf">0.005481</span>
+                           <span class="n">annualized_return</span>  <span class="mf">0.152373</span>
+                           <span class="n">information_ratio</span>  <span class="mf">1.751319</span>
+                           <span class="n">max_drawdown</span>      <span class="o">-</span><span class="mf">0.059055</span>
+<span class="n">excess_return_with_cost</span>    <span class="n">mean</span>               <span class="mf">0.000410</span>
+                           <span class="n">std</span>                <span class="mf">0.005478</span>
+                           <span class="n">annualized_return</span>  <span class="mf">0.103265</span>
+                           <span class="n">information_ratio</span>  <span class="mf">1.187411</span>
+                           <span class="n">max_drawdown</span>      <span class="o">-</span><span class="mf">0.075024</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost</cite></dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>mean</cite></dt><dd><p>Mean value of the <cite>CAR</cite> (cumulative abnormal return) without cost</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>std</cite></dt><dd><p>The <cite>Standard Deviation</cite> of <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>annualized_return</cite></dt><dd><p>The <cite>Annualized Rate</cite> of <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>information_ratio</cite></dt><dd><p>The <cite>Information Ratio</cite> without cost. please refer to <a class="reference external" href="https://www.investopedia.com/terms/i/informationratio.asp">Information Ratio – IR</a>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>max_drawdown</cite></dt><dd><p>The <cite>Maximum Drawdown</cite> of <cite>CAR</cite> (cumulative abnormal return) without cost, please refer to <a class="reference external" href="https://www.investopedia.com/terms/m/maximum-drawdown-mdd.asp">Maximum Drawdown (MDD)</a>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost</cite></dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>mean</cite></dt><dd><p>Mean value of the <cite>CAR</cite> (cumulative abnormal return) series with cost</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>std</cite></dt><dd><p>The <cite>Standard Deviation</cite> of <cite>CAR</cite> (cumulative abnormal return) series with cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>annualized_return</cite></dt><dd><p>The <cite>Annualized Rate</cite> of <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>information_ratio</cite></dt><dd><p>The <cite>Information Ratio</cite> with cost. please refer to <a class="reference external" href="https://www.investopedia.com/terms/i/informationratio.asp">Information Ratio – IR</a>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>max_drawdown</cite></dt><dd><p>The <cite>Maximum Drawdown</cite> of <cite>CAR</cite> (cumulative abnormal return) with cost, please refer to <a class="reference external" href="https://www.investopedia.com/terms/m/maximum-drawdown-mdd.asp">Maximum Drawdown (MDD)</a>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this heading"></a></h2>
+<p>To know more about the <cite>prediction score</cite> <cite>pred_score</cite> output by <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code>, please refer to <a class="reference external" href="model.html">Forecast Model: Model Training &amp; Prediction</a>.</p>
+</section>
+</section>
+</div>
+</body>
+</html>

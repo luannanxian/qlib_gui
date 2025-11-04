@@ -1,0 +1,311 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="workflow-workflow-management">
+<span id="workflow"></span><h1>Workflow: Workflow Management<a class="headerlink" href="#workflow-workflow-management" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p>The components in <a class="reference external" href="../introduction/introduction.html#framework">Qlib Framework</a> are designed in a loosely-coupled way. Users could build their own Quant research workflow with these components like <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/examples/workflow_by_code.py">Example</a>.</p>
+<p>Besides, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides more user-friendly interfaces named <code class="docutils literal notranslate"><span class="pre">qrun</span></code> to automatically run the whole workflow defined by configuration. Running the whole workflow is called an <cite>execution</cite>.
+With <code class="docutils literal notranslate"><span class="pre">qrun</span></code>, user can easily start an <cite>execution</cite>, which includes the following steps:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Data</dt><dd><ul>
+<li><p>Loading</p></li>
+<li><p>Processing</p></li>
+<li><p>Slicing</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Model</dt><dd><ul>
+<li><p>Training and inference</p></li>
+<li><p>Saving &amp; loading</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Evaluation</dt><dd><ul>
+<li><p>Forecast signal analysis</p></li>
+<li><p>Backtest</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>For each <cite>execution</cite>, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> has a complete system to tracking all the information as well as artifacts generated during training, inference and evaluation phase. For more information about how <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> handles this, please refer to the related document: <a class="reference external" href="../component/recorder.html">Recorder: Experiment Management</a>.</p>
+</section>
+<section id="complete-example">
+<h2>Complete Example<a class="headerlink" href="#complete-example" title="Permalink to this heading"></a></h2>
+<p>Before getting into details, here is a complete example of <code class="docutils literal notranslate"><span class="pre">qrun</span></code>, which defines the workflow in typical Quant research.
+Below is a typical config file of <code class="docutils literal notranslate"><span class="pre">qrun</span></code>.</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">qlib_init</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">provider_uri</span><span class="p">:</span><span class="w"> </span><span class="s">"~/.qlib/qlib_data/cn_data"</span>
+<span class="w">    </span><span class="nt">region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cn</span>
+<span class="nt">market</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;market</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csi300</span>
+<span class="nt">benchmark</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;benchmark</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SH000300</span>
+<span class="nt">data_handler_config</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;data_handler_config</span>
+<span class="w">    </span><span class="nt">start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2008-01-01</span>
+<span class="w">    </span><span class="nt">end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2020-08-01</span>
+<span class="w">    </span><span class="nt">fit_start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2008-01-01</span>
+<span class="w">    </span><span class="nt">fit_end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2014-12-31</span>
+<span class="w">    </span><span class="nt">instruments</span><span class="p">:</span><span class="w"> </span><span class="nv">*market</span>
+<span class="nt">port_analysis_config</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;port_analysis_config</span>
+<span class="w">    </span><span class="nt">strategy</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TopkDropoutStrategy</span>
+<span class="w">        </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.strategy.strategy</span>
+<span class="w">        </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">topk</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">            </span><span class="nt">n_drop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">            </span><span class="nt">signal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;PRED&gt;</span>
+<span class="w">    </span><span class="nt">backtest</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2017-01-01</span>
+<span class="w">        </span><span class="nt">end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2020-08-01</span>
+<span class="w">        </span><span class="nt">account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100000000</span>
+<span class="w">        </span><span class="nt">benchmark</span><span class="p">:</span><span class="w"> </span><span class="nv">*benchmark</span>
+<span class="w">        </span><span class="nt">exchange_kwargs</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">limit_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.095</span>
+<span class="w">            </span><span class="nt">deal_price</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">close</span>
+<span class="w">            </span><span class="nt">open_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0005</span>
+<span class="w">            </span><span class="nt">close_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0015</span>
+<span class="w">            </span><span class="nt">min_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="nt">task</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LGBModel</span>
+<span class="w">        </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.model.gbdt</span>
+<span class="w">        </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mse</span>
+<span class="w">            </span><span class="nt">colsample_bytree</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8879</span>
+<span class="w">            </span><span class="nt">learning_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0421</span>
+<span class="w">            </span><span class="nt">subsample</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8789</span>
+<span class="w">            </span><span class="nt">lambda_l1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">205.6999</span>
+<span class="w">            </span><span class="nt">lambda_l2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">580.9768</span>
+<span class="w">            </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="w">            </span><span class="nt">num_leaves</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">210</span>
+<span class="w">            </span><span class="nt">num_threads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">    </span><span class="nt">dataset</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DatasetH</span>
+<span class="w">        </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.data.dataset</span>
+<span class="w">        </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">handler</span><span class="p">:</span>
+<span class="w">                </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Alpha158</span>
+<span class="w">                </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.data.handler</span>
+<span class="w">                </span><span class="nt">kwargs</span><span class="p">:</span><span class="w"> </span><span class="nv">*data_handler_config</span>
+<span class="w">            </span><span class="nt">segments</span><span class="p">:</span>
+<span class="w">                </span><span class="nt">train</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2008-01-01</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2014-12-31</span><span class="p p-Indicator">]</span>
+<span class="w">                </span><span class="nt">valid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2015-01-01</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2016-12-31</span><span class="p p-Indicator">]</span>
+<span class="w">                </span><span class="nt">test</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2017-01-01</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2020-08-01</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">record</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SignalRecord</span>
+<span class="w">          </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.workflow.record_temp</span>
+<span class="w">          </span><span class="nt">kwargs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PortAnaRecord</span>
+<span class="w">          </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.workflow.record_temp</span>
+<span class="w">          </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">config</span><span class="p">:</span><span class="w"> </span><span class="nv">*port_analysis_config</span>
+</pre></div>
+</div>
+<p>After saving the config into <cite>configuration.yaml</cite>, users could start the workflow and test their ideas with a single command below.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>qrun<span class="w"> </span>configuration.yaml
+</pre></div>
+</div>
+<p>If users want to use <code class="docutils literal notranslate"><span class="pre">qrun</span></code> under debug mode, please use the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pdb<span class="w"> </span>qlib/workflow/cli.py<span class="w"> </span>examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><cite>qrun</cite> will be placed in your $PATH directory when installing <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The symbol <cite>&amp;</cite> in <cite>yaml</cite> file stands for an anchor of a field, which is useful when another fields include this parameter as part of the value. Taking the configuration file above as an example, users can directly change the value of <cite>market</cite> and <cite>benchmark</cite> without traversing the entire configuration file.</p>
+</div>
+</section>
+<section id="configuration-file">
+<h2>Configuration File<a class="headerlink" href="#configuration-file" title="Permalink to this heading"></a></h2>
+<p>Let’s get into details of <code class="docutils literal notranslate"><span class="pre">qrun</span></code> in this section.
+Before using <code class="docutils literal notranslate"><span class="pre">qrun</span></code>, users need to prepare a configuration file. The following content shows how to prepare each part of the configuration file.</p>
+<p>The design logic of the configuration file is very simple. It predefines fixed workflows and provide this yaml interface to users to define how to initialize each component.
+It follow the design of <a class="reference external" href="https://github.com/microsoft/qlib/blob/2aee9e0145decc3e71def70909639b5e5a6f4b58/qlib/utils/__init__.py#L264">init_instance_by_config</a> .  It defines the initialization of each component of Qlib, which typically include the class and the initialization arguments.</p>
+<p>For example, the following yaml and code are equivalent.</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">model</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LGBModel</span>
+<span class="w">    </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.model.gbdt</span>
+<span class="w">    </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mse</span>
+<span class="w">        </span><span class="nt">colsample_bytree</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8879</span>
+<span class="w">        </span><span class="nt">learning_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0421</span>
+<span class="w">        </span><span class="nt">subsample</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8789</span>
+<span class="w">        </span><span class="nt">lambda_l1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">205.6999</span>
+<span class="w">        </span><span class="nt">lambda_l2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">580.9768</span>
+<span class="w">        </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="w">        </span><span class="nt">num_leaves</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">210</span>
+<span class="w">        </span><span class="nt">num_threads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.model.gbdt</span><span class="w"> </span><span class="kn">import</span> <span class="n">LGBModel</span>
+<span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"loss"</span><span class="p">:</span> <span class="s2">"mse"</span> <span class="p">,</span>
+    <span class="s2">"colsample_bytree"</span><span class="p">:</span> <span class="mf">0.8879</span><span class="p">,</span>
+    <span class="s2">"learning_rate"</span><span class="p">:</span> <span class="mf">0.0421</span><span class="p">,</span>
+    <span class="s2">"subsample"</span><span class="p">:</span> <span class="mf">0.8789</span><span class="p">,</span>
+    <span class="s2">"lambda_l1"</span><span class="p">:</span> <span class="mf">205.6999</span><span class="p">,</span>
+    <span class="s2">"lambda_l2"</span><span class="p">:</span> <span class="mf">580.9768</span><span class="p">,</span>
+    <span class="s2">"max_depth"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s2">"num_leaves"</span><span class="p">:</span> <span class="mi">210</span><span class="p">,</span>
+    <span class="s2">"num_threads"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">LGBModel</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="qlib-init-section">
+<h3>Qlib Init Section<a class="headerlink" href="#qlib-init-section" title="Permalink to this heading"></a></h3>
+<p>At first, the configuration file needs to contain several basic parameters which will be used for qlib initialization.</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">provider_uri</span><span class="p">:</span><span class="w"> </span><span class="s">"~/.qlib/qlib_data/cn_data"</span>
+<span class="nt">region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cn</span>
+</pre></div>
+</div>
+<p>The meaning of each field is as follows:</p>
+<ul>
+<li><dl class="simple">
+<dt><cite>provider_uri</cite></dt><dd><p>Type: str. The URI of the Qlib data. For example, it could be the location where the data loaded by <code class="docutils literal notranslate"><span class="pre">get_data.py</span></code> are stored.</p>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><cite>region</cite></dt><dd><ul class="simple">
+<li><p>If <cite>region</cite> == “us”, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> will be initialized in US-stock mode.</p></li>
+<li><p>If <cite>region</cite> == “cn”, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> will be initialized in China-stock mode.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The value of <cite>region</cite> should be aligned with the data stored in <cite>provider_uri</cite>.</p>
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="task-section">
+<h3>Task Section<a class="headerlink" href="#task-section" title="Permalink to this heading"></a></h3>
+<p>The <cite>task</cite> field in the configuration corresponds to a <cite>task</cite>, which contains the parameters of three different subsections: <cite>Model</cite>, <cite>Dataset</cite> and <cite>Record</cite>.</p>
+<section id="model-section">
+<h4>Model Section<a class="headerlink" href="#model-section" title="Permalink to this heading"></a></h4>
+<p>In the <cite>task</cite> field, the <cite>model</cite> section describes the parameters of the model to be used for training and inference. For more information about the base <code class="docutils literal notranslate"><span class="pre">Model</span></code> class, please refer to <a class="reference external" href="../component/model.html">Qlib Model</a>.</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">model</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LGBModel</span>
+<span class="w">    </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.model.gbdt</span>
+<span class="w">    </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mse</span>
+<span class="w">        </span><span class="nt">colsample_bytree</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8879</span>
+<span class="w">        </span><span class="nt">learning_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0421</span>
+<span class="w">        </span><span class="nt">subsample</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8789</span>
+<span class="w">        </span><span class="nt">lambda_l1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">205.6999</span>
+<span class="w">        </span><span class="nt">lambda_l2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">580.9768</span>
+<span class="w">        </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="w">        </span><span class="nt">num_leaves</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">210</span>
+<span class="w">        </span><span class="nt">num_threads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+</pre></div>
+</div>
+<p>The meaning of each field is as follows:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>class</cite></dt><dd><p>Type: str. The name for the model class.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>module_path</cite></dt><dd><p>Type: str. The path for the model in qlib.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>kwargs</cite></dt><dd><p>The keywords arguments for the model. Please refer to the specific model implementation for more information: <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/contrib/model">models</a>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a util named: <code class="docutils literal notranslate"><span class="pre">init_instance_by_config</span></code> to initialize any class inside <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> with the configuration includes the fields: <cite>class</cite>, <cite>module_path</cite> and <cite>kwargs</cite>.</p>
+</div>
+</section>
+<section id="dataset-section">
+<h4>Dataset Section<a class="headerlink" href="#dataset-section" title="Permalink to this heading"></a></h4>
+<p>The <cite>dataset</cite> field describes the parameters for the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> module in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> as well those for the module <code class="docutils literal notranslate"><span class="pre">DataHandler</span></code>. For more information about the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> module, please refer to <a class="reference external" href="../component/data.html#dataset">Qlib Data</a>.</p>
+<p>The keywords arguments configuration of the <code class="docutils literal notranslate"><span class="pre">DataHandler</span></code> is as follows:</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">data_handler_config</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;data_handler_config</span>
+<span class="w">    </span><span class="nt">start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2008-01-01</span>
+<span class="w">    </span><span class="nt">end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2020-08-01</span>
+<span class="w">    </span><span class="nt">fit_start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2008-01-01</span>
+<span class="w">    </span><span class="nt">fit_end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2014-12-31</span>
+<span class="w">    </span><span class="nt">instruments</span><span class="p">:</span><span class="w"> </span><span class="nv">*market</span>
+</pre></div>
+</div>
+<p>Users can refer to the document of <a class="reference external" href="../component/data.html#datahandler">DataHandler</a> for more information about the meaning of each field in the configuration.</p>
+<p>Here is the configuration for the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> module which will take care of data preprocessing and slicing during the training and testing phase.</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DatasetH</span>
+<span class="w">    </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.data.dataset</span>
+<span class="w">    </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">handler</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Alpha158</span>
+<span class="w">            </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.data.handler</span>
+<span class="w">            </span><span class="nt">kwargs</span><span class="p">:</span><span class="w"> </span><span class="nv">*data_handler_config</span>
+<span class="w">        </span><span class="nt">segments</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">train</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2008-01-01</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2014-12-31</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">valid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2015-01-01</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2016-12-31</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">test</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2017-01-01</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2020-08-01</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+<section id="record-section">
+<h4>Record Section<a class="headerlink" href="#record-section" title="Permalink to this heading"></a></h4>
+<p>The <cite>record</cite> field is about the parameters the <code class="docutils literal notranslate"><span class="pre">Record</span></code> module in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>. <code class="docutils literal notranslate"><span class="pre">Record</span></code> is responsible for tracking training process and results such as <cite>information Coefficient (IC)</cite> and <cite>backtest</cite> in a standard format.</p>
+<p>The following script is the configuration of <cite>backtest</cite> and the <cite>strategy</cite> used in <cite>backtest</cite>:</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">port_analysis_config</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;port_analysis_config</span>
+<span class="w">    </span><span class="nt">strategy</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TopkDropoutStrategy</span>
+<span class="w">        </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.strategy.strategy</span>
+<span class="w">        </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">topk</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">            </span><span class="nt">n_drop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">            </span><span class="nt">signal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;PRED&gt;</span>
+<span class="w">    </span><span class="nt">backtest</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">limit_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.095</span>
+<span class="w">        </span><span class="nt">account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100000000</span>
+<span class="w">        </span><span class="nt">benchmark</span><span class="p">:</span><span class="w"> </span><span class="nv">*benchmark</span>
+<span class="w">        </span><span class="nt">deal_price</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">close</span>
+<span class="w">        </span><span class="nt">open_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0005</span>
+<span class="w">        </span><span class="nt">close_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0015</span>
+<span class="w">        </span><span class="nt">min_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+</pre></div>
+</div>
+<p>For more information about the meaning of each field in configuration of <cite>strategy</cite> and <cite>backtest</cite>, users can look up the documents: <a class="reference external" href="../component/strategy.html">Strategy</a> and <a class="reference external" href="../component/backtest.html">Backtest</a>.</p>
+<p>Here is the configuration details of different <cite>Record Template</cite> such as <code class="docutils literal notranslate"><span class="pre">SignalRecord</span></code> and <code class="docutils literal notranslate"><span class="pre">PortAnaRecord</span></code>:</p>
+<div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">record</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SignalRecord</span>
+<span class="w">      </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.workflow.record_temp</span>
+<span class="w">      </span><span class="nt">kwargs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PortAnaRecord</span>
+<span class="w">      </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.workflow.record_temp</span>
+<span class="w">      </span><span class="nt">kwargs</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">config</span><span class="p">:</span><span class="w"> </span><span class="nv">*port_analysis_config</span>
+</pre></div>
+</div>
+<p>For more information about the <code class="docutils literal notranslate"><span class="pre">Record</span></code> module in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, user can refer to the related document: <a class="reference external" href="../component/recorder.html#record-template">Record</a>.</p>
+</section>
+</section>
+</section>
+</section>
+</div>
+</body>
+</html>

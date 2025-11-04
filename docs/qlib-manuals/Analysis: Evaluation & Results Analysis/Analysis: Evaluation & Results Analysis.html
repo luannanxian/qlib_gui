@@ -1,0 +1,462 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="analysis-evaluation-results-analysis">
+<span id="report"></span><h1>Analysis: Evaluation &amp; Results Analysis<a class="headerlink" href="#analysis-evaluation-results-analysis" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Analysis</span></code> is designed to show the graphical reports of <code class="docutils literal notranslate"><span class="pre">Intraday</span> <span class="pre">Trading</span></code> , which helps users to evaluate and analyse investment portfolios visually. The following are some graphics to view:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>analysis_position</dt><dd><ul>
+<li><p>report_graph</p></li>
+<li><p>score_ic_graph</p></li>
+<li><p>cumulative_return_graph</p></li>
+<li><p>risk_analysis_graph</p></li>
+<li><p>rank_label_graph</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>analysis_model</dt><dd><ul>
+<li><p>model_performance_graph</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>All of the accumulated profit metrics(e.g. return, max drawdown) in Qlib are calculated by summation.
+This avoids the metrics or the plots being skewed exponentially over time.</p>
+</section>
+<section id="graphical-reports">
+<h2>Graphical Reports<a class="headerlink" href="#graphical-reports" title="Permalink to this heading"></a></h2>
+<p>Users can run the following code to get all supported reports.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">qlib.contrib.report</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">qcr</span>
+<span class="o">&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="n">qcr</span><span class="o">.</span><span class="n">GRAPH_NAME_LIST</span><span class="p">)</span>
+<span class="p">[</span><span class="s1">'analysis_position.report_graph'</span><span class="p">,</span> <span class="s1">'analysis_position.score_ic_graph'</span><span class="p">,</span> <span class="s1">'analysis_position.cumulative_return_graph'</span><span class="p">,</span> <span class="s1">'analysis_position.risk_analysis_graph'</span><span class="p">,</span> <span class="s1">'analysis_position.rank_label_graph'</span><span class="p">,</span> <span class="s1">'analysis_model.model_performance_graph'</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For more details, please refer to the function document: similar to <code class="docutils literal notranslate"><span class="pre">help(qcr.analysis_position.report_graph)</span></code></p>
+</div>
+</section>
+<section id="usage-example">
+<h2>Usage &amp; Example<a class="headerlink" href="#usage-example" title="Permalink to this heading"></a></h2>
+<section id="usage-of-analysis-position-report">
+<h3>Usage of <cite>analysis_position.report</cite><a class="headerlink" href="#usage-of-analysis-position-report" title="Permalink to this heading"></a></h3>
+<section id="api">
+<h4>API<a class="headerlink" href="#api" title="Permalink to this heading"></a></h4>
+</section>
+<section id="graphical-result">
+<h4>Graphical Result<a class="headerlink" href="#graphical-result" title="Permalink to this heading"></a></h4>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Axis X: Trading day</p></li>
+<li><dl class="simple">
+<dt>Axis Y:</dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>cum bench</cite></dt><dd><p>Cumulative returns series of benchmark</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>cum return wo cost</cite></dt><dd><p>Cumulative returns series of portfolio without cost</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>cum return w cost</cite></dt><dd><p>Cumulative returns series of portfolio with cost</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>return wo mdd</cite></dt><dd><p>Maximum drawdown series of cumulative return without cost</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>return w cost mdd</cite>:</dt><dd><p>Maximum drawdown series of cumulative return with cost</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>cum ex return wo cost</cite></dt><dd><p>The <cite>CAR</cite> (cumulative abnormal return) series of the portfolio compared to the benchmark without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>cum ex return w cost</cite></dt><dd><p>The <cite>CAR</cite> (cumulative abnormal return) series of the portfolio compared to the benchmark with cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>turnover</cite></dt><dd><p>Turnover rate series</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>cum ex return wo cost mdd</cite></dt><dd><p>Drawdown series of <cite>CAR</cite> (cumulative abnormal return) without cost</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>cum ex return w cost mdd</cite></dt><dd><p>Drawdown series of <cite>CAR</cite> (cumulative abnormal return) with cost</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>The shaded part above: Maximum drawdown corresponding to <cite>cum return wo cost</cite></p></li>
+<li><p>The shaded part below: Maximum drawdown corresponding to <cite>cum ex return wo cost</cite></p></li>
+</ul>
+</div>
+<img alt="../_images/report.png" src="../_images/report.png"/>
+</section>
+</section>
+<section id="usage-of-analysis-position-score-ic">
+<h3>Usage of <cite>analysis_position.score_ic</cite><a class="headerlink" href="#usage-of-analysis-position-score-ic" title="Permalink to this heading"></a></h3>
+<section id="id1">
+<h4>API<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h4>
+</section>
+<section id="id2">
+<h4>Graphical Result<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h4>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Axis X: Trading day</p></li>
+<li><dl class="simple">
+<dt>Axis Y:</dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>ic</cite></dt><dd><p>The <cite>Pearson correlation coefficient</cite> series between <cite>label</cite> and <cite>prediction score</cite>.
+In the above example, the <cite>label</cite> is formulated as <cite>Ref($close, -2)/Ref($close, -1)-1</cite>. Please refer to <a class="reference external" href="data.html#feature">Data Feature</a> for more details.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>rank_ic</cite></dt><dd><p>The <cite>Spearman’s rank correlation coefficient</cite> series between <cite>label</cite> and <cite>prediction score</cite>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/score_ic.png" src="../_images/score_ic.png"/>
+</section>
+</section>
+<section id="usage-of-analysis-position-risk-analysis">
+<h3>Usage of <cite>analysis_position.risk_analysis</cite><a class="headerlink" href="#usage-of-analysis-position-risk-analysis" title="Permalink to this heading"></a></h3>
+<section id="id3">
+<h4>API<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h4>
+</section>
+<section id="id4">
+<h4>Graphical Result<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h4>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li><dl>
+<dt>general graphics</dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>std</cite></dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost</cite></dt><dd><p>The <cite>Standard Deviation</cite> of <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost</cite></dt><dd><p>The <cite>Standard Deviation</cite> of <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>annualized_return</cite></dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost</cite></dt><dd><p>The <cite>Annualized Rate</cite> of <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost</cite></dt><dd><p>The <cite>Annualized Rate</cite> of <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><cite>information_ratio</cite></dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost</cite></dt><dd><p>The <cite>Information Ratio</cite> without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost</cite></dt><dd><p>The <cite>Information Ratio</cite> with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>To know more about <cite>Information Ratio</cite>, please refer to <a class="reference external" href="https://www.investopedia.com/terms/i/informationratio.asp">Information Ratio – IR</a>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>max_drawdown</cite></dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost</cite></dt><dd><p>The <cite>Maximum Drawdown</cite> of <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost</cite></dt><dd><p>The <cite>Maximum Drawdown</cite> of <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/risk_analysis_bar.png" class="align-center" src="../_images/risk_analysis_bar.png"/>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>annualized_return/max_drawdown/information_ratio/std graphics</dt><dd><ul>
+<li><p>Axis X: Trading days grouped by month</p></li>
+<li><dl class="simple">
+<dt>Axis Y:</dt><dd><ul>
+<li><dl class="simple">
+<dt>annualized_return graphics</dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost_annualized_return</cite></dt><dd><p>The <cite>Annualized Rate</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost_annualized_return</cite></dt><dd><p>The <cite>Annualized Rate</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>max_drawdown graphics</dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost_max_drawdown</cite></dt><dd><p>The <cite>Maximum Drawdown</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost_max_drawdown</cite></dt><dd><p>The <cite>Maximum Drawdown</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>information_ratio graphics</dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost_information_ratio</cite></dt><dd><p>The <cite>Information Ratio</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost_information_ratio</cite></dt><dd><p>The <cite>Information Ratio</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>std graphics</dt><dd><ul>
+<li><dl class="simple">
+<dt><cite>excess_return_without_cost_max_drawdown</cite></dt><dd><p>The <cite>Standard Deviation</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) without cost.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>excess_return_with_cost_max_drawdown</cite></dt><dd><p>The <cite>Standard Deviation</cite> series of monthly <cite>CAR</cite> (cumulative abnormal return) with cost.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/risk_analysis_annualized_return.png" class="align-center" src="../_images/risk_analysis_annualized_return.png"/>
+<img alt="../_images/risk_analysis_max_drawdown.png" class="align-center" src="../_images/risk_analysis_max_drawdown.png"/>
+<img alt="../_images/risk_analysis_information_ratio.png" class="align-center" src="../_images/risk_analysis_information_ratio.png"/>
+<img alt="../_images/risk_analysis_std.png" class="align-center" src="../_images/risk_analysis_std.png"/>
+</section>
+</section>
+<section id="usage-of-analysis-model-analysis-model-performance">
+<h3>Usage of <cite>analysis_model.analysis_model_performance</cite><a class="headerlink" href="#usage-of-analysis-model-analysis-model-performance" title="Permalink to this heading"></a></h3>
+<section id="id5">
+<h4>API<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h4>
+</section>
+<section id="graphical-results">
+<h4>Graphical Results<a class="headerlink" href="#graphical-results" title="Permalink to this heading"></a></h4>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li><dl>
+<dt>cumulative return graphics</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt><cite>Group1</cite>:</dt><dd><p>The <cite>Cumulative Return</cite> series of stocks group with (<cite>ranking ratio</cite> of label &lt;= 20%)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>Group2</cite>:</dt><dd><p>The <cite>Cumulative Return</cite> series of stocks group with (20% &lt; <cite>ranking ratio</cite> of label &lt;= 40%)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>Group3</cite>:</dt><dd><p>The <cite>Cumulative Return</cite> series of stocks group with (40% &lt; <cite>ranking ratio</cite> of label &lt;= 60%)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>Group4</cite>:</dt><dd><p>The <cite>Cumulative Return</cite> series of stocks group with (60% &lt; <cite>ranking ratio</cite> of label &lt;= 80%)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>Group5</cite>:</dt><dd><p>The <cite>Cumulative Return</cite> series of stocks group with (80% &lt; <cite>ranking ratio</cite> of label)</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>long-short</cite>:</dt><dd><p>The Difference series between <cite>Cumulative Return</cite> of <cite>Group1</cite> and of <cite>Group5</cite></p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>long-average</cite></dt><dd><p>The Difference series between <cite>Cumulative Return</cite> of <cite>Group1</cite> and average <cite>Cumulative Return</cite> for all stocks.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<dl>
+<dt>The <cite>ranking ratio</cite> can be formulated as follows.</dt><dd><div class="math notranslate nohighlight">
+\[ranking\ ratio = \frac{Ascending\ Ranking\ of\ label}{Number\ of\ Stocks\ in\ the\ Portfolio}\]</div>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/analysis_model_cumulative_return.png" class="align-center" src="../_images/analysis_model_cumulative_return.png"/>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>long-short/long-average</dt><dd><p>The distribution of long-short/long-average returns on each trading day</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/analysis_model_long_short.png" class="align-center" src="../_images/analysis_model_long_short.png"/>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Information Coefficient</dt><dd><ul>
+<li><p>The <cite>Pearson correlation coefficient</cite> series between <cite>labels</cite> and <cite>prediction scores</cite> of stocks in portfolio.</p></li>
+<li><p>The graphics reports can be used to evaluate the <cite>prediction scores</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/analysis_model_IC.png" class="align-center" src="../_images/analysis_model_IC.png"/>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Monthly IC</dt><dd><p>Monthly average of the <cite>Information Coefficient</cite></p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/analysis_model_monthly_IC.png" class="align-center" src="../_images/analysis_model_monthly_IC.png"/>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>IC</dt><dd><p>The distribution of the <cite>Information Coefficient</cite> on each trading day.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>IC Normal Dist. Q-Q</dt><dd><p>The <cite>Quantile-Quantile Plot</cite> is used for the normal distribution of <cite>Information Coefficient</cite> on each trading day.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/analysis_model_NDQ.png" class="align-center" src="../_images/analysis_model_NDQ.png"/>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Auto Correlation</dt><dd><ul>
+<li><p>The <cite>Pearson correlation coefficient</cite> series between the latest <cite>prediction scores</cite> and the <cite>prediction scores</cite> <cite>lag</cite> days ago of stocks in portfolio on each trading day.</p></li>
+<li><p>The graphics reports can be used to estimate the turnover rate.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<img alt="../_images/analysis_model_auto_correlation.png" class="align-center" src="../_images/analysis_model_auto_correlation.png"/>
+</section>
+</section>
+</section>
+</section>
+</div>
+</body>
+</html>

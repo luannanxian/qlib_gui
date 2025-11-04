@@ -1,0 +1,131 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="data-retrieval">
+<span id="getdata"></span><h1>Data Retrieval<a class="headerlink" href="#data-retrieval" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p>Users can get stock data with <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>. The following examples demonstrate the basic user interface.</p>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">QLib</span></code> Initialization:</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In order to get the data, users need to initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> with <cite>qlib.init</cite> first. Please refer to <a class="reference external" href="initialization.html">initialization</a>.</p>
+</div>
+<p>If users followed steps in <a class="reference external" href="initialization.html">initialization</a> and downloaded the data, they should use the following code to initialize qlib</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">qlib</span>
+<span class="o">&gt;&gt;</span> <span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=</span><span class="s1">'~/.qlib/qlib_data/cn_data'</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Load trading calendar with given time range and frequency:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="n">D</span><span class="o">.</span><span class="n">calendar</span><span class="p">(</span><span class="n">start_time</span><span class="o">=</span><span class="s1">'2010-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2017-12-31'</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">'day'</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span>
+<span class="p">[</span><span class="n">Timestamp</span><span class="p">(</span><span class="s1">'2010-01-04 00:00:00'</span><span class="p">),</span> <span class="n">Timestamp</span><span class="p">(</span><span class="s1">'2010-01-05 00:00:00'</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>Parse a given market name into a stock pool config:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="n">D</span><span class="o">.</span><span class="n">instruments</span><span class="p">(</span><span class="n">market</span><span class="o">=</span><span class="s1">'all'</span><span class="p">)</span>
+<span class="p">{</span><span class="s1">'market'</span><span class="p">:</span> <span class="s1">'all'</span><span class="p">,</span> <span class="s1">'filter_pipe'</span><span class="p">:</span> <span class="p">[]}</span>
+</pre></div>
+</div>
+<p>Load instruments of certain stock pool in the given time range:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="n">instruments</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">instruments</span><span class="p">(</span><span class="n">market</span><span class="o">=</span><span class="s1">'csi300'</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">D</span><span class="o">.</span><span class="n">list_instruments</span><span class="p">(</span><span class="n">instruments</span><span class="o">=</span><span class="n">instruments</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2010-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2017-12-31'</span><span class="p">,</span> <span class="n">as_list</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:</span><span class="mi">6</span><span class="p">]</span>
+<span class="p">[</span><span class="s1">'SH600036'</span><span class="p">,</span> <span class="s1">'SH600110'</span><span class="p">,</span> <span class="s1">'SH600087'</span><span class="p">,</span> <span class="s1">'SH600900'</span><span class="p">,</span> <span class="s1">'SH600089'</span><span class="p">,</span> <span class="s1">'SZ000912'</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Load dynamic instruments from a base market according to a name filter</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data.filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">NameDFilter</span>
+<span class="o">&gt;&gt;</span> <span class="n">nameDFilter</span> <span class="o">=</span> <span class="n">NameDFilter</span><span class="p">(</span><span class="n">name_rule_re</span><span class="o">=</span><span class="s1">'SH[0-9]</span><span class="si">{4}</span><span class="s1">55'</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">instruments</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">instruments</span><span class="p">(</span><span class="n">market</span><span class="o">=</span><span class="s1">'csi300'</span><span class="p">,</span> <span class="n">filter_pipe</span><span class="o">=</span><span class="p">[</span><span class="n">nameDFilter</span><span class="p">])</span>
+<span class="o">&gt;&gt;</span> <span class="n">D</span><span class="o">.</span><span class="n">list_instruments</span><span class="p">(</span><span class="n">instruments</span><span class="o">=</span><span class="n">instruments</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2015-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2016-02-15'</span><span class="p">,</span> <span class="n">as_list</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">[</span><span class="s1">'SH600655'</span><span class="p">,</span> <span class="s1">'SH601555'</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Load dynamic instruments from a base market according to an expression filter</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data.filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpressionDFilter</span>
+<span class="o">&gt;&gt;</span> <span class="n">expressionDFilter</span> <span class="o">=</span> <span class="n">ExpressionDFilter</span><span class="p">(</span><span class="n">rule_expression</span><span class="o">=</span><span class="s1">'$close&gt;2000'</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">instruments</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">instruments</span><span class="p">(</span><span class="n">market</span><span class="o">=</span><span class="s1">'csi300'</span><span class="p">,</span> <span class="n">filter_pipe</span><span class="o">=</span><span class="p">[</span><span class="n">expressionDFilter</span><span class="p">])</span>
+<span class="o">&gt;&gt;</span> <span class="n">D</span><span class="o">.</span><span class="n">list_instruments</span><span class="p">(</span><span class="n">instruments</span><span class="o">=</span><span class="n">instruments</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2015-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2016-02-15'</span><span class="p">,</span> <span class="n">as_list</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">[</span><span class="s1">'SZ000651'</span><span class="p">,</span> <span class="s1">'SZ000002'</span><span class="p">,</span> <span class="s1">'SH600655'</span><span class="p">,</span> <span class="s1">'SH600570'</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>For more details about filter, please refer <a class="reference external" href="../component/data.html">Filter API</a>.</p>
+<p>Load features of certain instruments in a given time range:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="n">instruments</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'SH600000'</span><span class="p">]</span>
+<span class="o">&gt;&gt;</span> <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'$close'</span><span class="p">,</span> <span class="s1">'$volume'</span><span class="p">,</span> <span class="s1">'Ref($close, 1)'</span><span class="p">,</span> <span class="s1">'Mean($close, 3)'</span><span class="p">,</span> <span class="s1">'$high-$low'</span><span class="p">]</span>
+<span class="o">&gt;&gt;</span> <span class="n">D</span><span class="o">.</span><span class="n">features</span><span class="p">(</span><span class="n">instruments</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2010-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2017-12-31'</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">'day'</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">()</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+<span class="s1">'                           $close     $volume  Ref($close, 1)  Mean($close, 3)  $high-$low</span>
+<span class="o">...</span> <span class="n">instrument</span>  <span class="n">datetime</span>
+<span class="o">...</span> <span class="n">SH600000</span>    <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span>  <span class="mf">86.778313</span>  <span class="mf">16162960.0</span>       <span class="mf">88.825928</span>        <span class="mf">88.061483</span>    <span class="mf">2.907631</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">05</span>  <span class="mf">87.433578</span>  <span class="mf">28117442.0</span>       <span class="mf">86.778313</span>        <span class="mf">87.679273</span>    <span class="mf">3.235252</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">06</span>  <span class="mf">85.713585</span>  <span class="mf">23632884.0</span>       <span class="mf">87.433578</span>        <span class="mf">86.641825</span>    <span class="mf">1.720009</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">07</span>  <span class="mf">83.788803</span>  <span class="mf">20813402.0</span>       <span class="mf">85.713585</span>        <span class="mf">85.645322</span>    <span class="mf">3.030487</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">08</span>  <span class="mf">84.730675</span>  <span class="mf">16044853.0</span>       <span class="mf">83.788803</span>        <span class="mf">84.744354</span>    <span class="mf">2.047623</span><span class="s1">'</span>
+</pre></div>
+</div>
+<p>Load features of certain stock pool in a given time range:</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>With cache enabled, the qlib data server will cache data all the time for the requested stock pool and fields, it may take longer to process the request for the first time than that without cache. But after the first time, requests with the same stock pool and fields will hit the cache and be processed faster even the requested time period changes.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data.filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">NameDFilter</span><span class="p">,</span> <span class="n">ExpressionDFilter</span>
+<span class="o">&gt;&gt;</span> <span class="n">nameDFilter</span> <span class="o">=</span> <span class="n">NameDFilter</span><span class="p">(</span><span class="n">name_rule_re</span><span class="o">=</span><span class="s1">'SH[0-9]</span><span class="si">{4}</span><span class="s1">55'</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">expressionDFilter</span> <span class="o">=</span> <span class="n">ExpressionDFilter</span><span class="p">(</span><span class="n">rule_expression</span><span class="o">=</span><span class="s1">'$close&gt;Ref($close,1)'</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">instruments</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">instruments</span><span class="p">(</span><span class="n">market</span><span class="o">=</span><span class="s1">'csi300'</span><span class="p">,</span> <span class="n">filter_pipe</span><span class="o">=</span><span class="p">[</span><span class="n">nameDFilter</span><span class="p">,</span> <span class="n">expressionDFilter</span><span class="p">])</span>
+<span class="o">&gt;&gt;</span> <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'$close'</span><span class="p">,</span> <span class="s1">'$volume'</span><span class="p">,</span> <span class="s1">'Ref($close, 1)'</span><span class="p">,</span> <span class="s1">'Mean($close, 3)'</span><span class="p">,</span> <span class="s1">'$high-$low'</span><span class="p">]</span>
+<span class="o">&gt;&gt;</span> <span class="n">D</span><span class="o">.</span><span class="n">features</span><span class="p">(</span><span class="n">instruments</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2010-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2017-12-31'</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">'day'</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">()</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+<span class="s1">'                              $close        $volume  Ref($close, 1)  Mean($close, 3)  $high-$low</span>
+<span class="o">...</span> <span class="n">instrument</span>  <span class="n">datetime</span>
+<span class="o">...</span> <span class="n">SH600655</span>    <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span>  <span class="mf">2699.567383</span>  <span class="mf">158193.328125</span>     <span class="mf">2619.070312</span>      <span class="mf">2626.097738</span>  <span class="mf">124.580566</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">08</span>  <span class="mf">2612.359619</span>   <span class="mf">77501.406250</span>     <span class="mf">2584.567627</span>      <span class="mf">2623.220133</span>   <span class="mf">83.373047</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">11</span>  <span class="mf">2712.982422</span>  <span class="mf">160852.390625</span>     <span class="mf">2612.359619</span>      <span class="mf">2636.636556</span>  <span class="mf">146.621582</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">12</span>  <span class="mf">2788.688232</span>  <span class="mf">164587.937500</span>     <span class="mf">2712.982422</span>      <span class="mf">2704.676758</span>  <span class="mf">128.413818</span>
+<span class="o">...</span>             <span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">13</span>  <span class="mf">2790.604004</span>  <span class="mf">145460.453125</span>     <span class="mf">2788.688232</span>      <span class="mf">2764.091553</span>  <span class="mf">128.413818</span><span class="s1">'</span>
+</pre></div>
+</div>
+<p>For more details about features, please refer <a class="reference external" href="../component/data.html">Feature API</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When calling <cite>D.features()</cite> at the client, use parameter <cite>disk_cache=0</cite> to skip dataset cache, use <cite>disk_cache=1</cite> to generate and use dataset cache. In addition, when calling at the server, users can use <cite>disk_cache=2</cite> to update the dataset cache.</p>
+</div>
+<p>When you are building complicated expressions, implementing all the expressions in a single string may not be easy.
+For example, it looks quite long and complicated:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="o">&gt;&gt;</span> <span class="n">data</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">features</span><span class="p">([</span><span class="s2">"sh600519"</span><span class="p">],</span> <span class="p">[</span><span class="s2">"(($high / $close) + ($open / $close)) * (($high / $close) + ($open / $close)) / (($high / $close) + ($open / $close))"</span><span class="p">],</span> <span class="n">start_time</span><span class="o">=</span><span class="s2">"20200101"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>But using string is not the only way to implement the expression. You can also implement expression by code.
+Here is an exmaple which does the same thing as above examples.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data.ops</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="o">&gt;&gt;</span> <span class="n">f1</span> <span class="o">=</span> <span class="n">Feature</span><span class="p">(</span><span class="s2">"high"</span><span class="p">)</span> <span class="o">/</span> <span class="n">Feature</span><span class="p">(</span><span class="s2">"close"</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">f2</span> <span class="o">=</span> <span class="n">Feature</span><span class="p">(</span><span class="s2">"open"</span><span class="p">)</span> <span class="o">/</span> <span class="n">Feature</span><span class="p">(</span><span class="s2">"close"</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">f3</span> <span class="o">=</span> <span class="n">f1</span> <span class="o">+</span> <span class="n">f2</span>
+<span class="o">&gt;&gt;</span> <span class="n">f4</span> <span class="o">=</span> <span class="n">f3</span> <span class="o">*</span> <span class="n">f3</span> <span class="o">/</span> <span class="n">f3</span>
+
+<span class="o">&gt;&gt;</span> <span class="n">data</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">features</span><span class="p">([</span><span class="s2">"sh600519"</span><span class="p">],</span> <span class="p">[</span><span class="n">f4</span><span class="p">],</span> <span class="n">start_time</span><span class="o">=</span><span class="s2">"20200101"</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this heading"></a></h2>
+<p>To know more about how to use the Data, go to API Reference: <a class="reference external" href="../reference/api.html#data">Data API</a></p>
+</section>
+</section>
+</div>
+</body>
+</html>

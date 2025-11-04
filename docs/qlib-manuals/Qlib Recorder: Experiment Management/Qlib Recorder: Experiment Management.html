@@ -1,0 +1,1199 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="qlib-recorder-experiment-management">
+<span id="recorder"></span><h1>Qlib Recorder: Experiment Management<a class="headerlink" href="#qlib-recorder-experiment-management" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> contains an experiment management system named <code class="docutils literal notranslate"><span class="pre">QlibRecorder</span></code>, which is designed to help users handle experiment and analyse results in an efficient way.</p>
+<p>There are three components of the system:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>ExperimentManager</cite></dt><dd><p>a class that manages experiments.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>Experiment</cite></dt><dd><p>a class of experiment, and each instance of it is responsible for a single experiment.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>Recorder</cite></dt><dd><p>a class of recorder, and each instance of it is responsible for a single run.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Here is a general view of the structure of the system:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ExperimentManager</span>
+    <span class="o">-</span> <span class="n">Experiment</span> <span class="mi">1</span>
+        <span class="o">-</span> <span class="n">Recorder</span> <span class="mi">1</span>
+        <span class="o">-</span> <span class="n">Recorder</span> <span class="mi">2</span>
+        <span class="o">-</span> <span class="o">...</span>
+    <span class="o">-</span> <span class="n">Experiment</span> <span class="mi">2</span>
+        <span class="o">-</span> <span class="n">Recorder</span> <span class="mi">1</span>
+        <span class="o">-</span> <span class="n">Recorder</span> <span class="mi">2</span>
+        <span class="o">-</span> <span class="o">...</span>
+    <span class="o">-</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>This experiment management system defines a set of interface and provided a concrete implementation <code class="docutils literal notranslate"><span class="pre">MLflowExpManager</span></code>, which is based on the machine learning platform: <code class="docutils literal notranslate"><span class="pre">MLFlow</span></code> (<a class="reference external" href="https://mlflow.org/">link</a>).</p>
+<p>If users set the implementation of <code class="docutils literal notranslate"><span class="pre">ExpManager</span></code> to be <code class="docutils literal notranslate"><span class="pre">MLflowExpManager</span></code>, they can use the command <cite>mlflow ui</cite> to visualize and check the experiment results. For more information, please refer to the related documents <a class="reference external" href="https://www.mlflow.org/docs/latest/cli.html#mlflow-ui">here</a>.</p>
+</section>
+<section id="qlib-recorder">
+<h2>Qlib Recorder<a class="headerlink" href="#qlib-recorder" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">QlibRecorder</span></code> provides a high level API for users to use the experiment management system. The interfaces are wrapped in the variable <code class="docutils literal notranslate"><span class="pre">R</span></code> in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, and users can directly use <code class="docutils literal notranslate"><span class="pre">R</span></code> to interact with the system. The following command shows how to import <code class="docutils literal notranslate"><span class="pre">R</span></code> in Python:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">R</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">QlibRecorder</span></code> includes several common API for managing <cite>experiments</cite> and <cite>recorders</cite> within a workflow. For more available APIs, please refer to the following section about <cite>Experiment Manager</cite>, <cite>Experiment</cite> and <cite>Recorder</cite>.</p>
+<p>Here are the available interfaces of <code class="docutils literal notranslate"><span class="pre">QlibRecorder</span></code>:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.__init__.</span></span><span class="sig-name descname"><span class="pre">QlibRecorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.expm.ExpManager" title="qlib.workflow.expm.ExpManager"><span class="pre">ExpManager</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder" title="Permalink to this definition"></a></dt>
+<dd><p>A global system that helps to manage the experiments.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp_manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.workflow.expm.ExpManager" title="qlib.workflow.expm.ExpManager"><span class="pre">ExpManager</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.__init__" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.start" title="Permalink to this definition"></a></dt>
+<dd><p>Method to start an experiment. This method can only be called within a Python’s <cite>with</cite> statement. Here is the example code:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># start new experiment and recorder</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">,</span> <span class="n">recorder_name</span><span class="o">=</span><span class="s1">'recorder_1'</span><span class="p">):</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="n">R</span><span class="o">.</span><span class="n">log</span><span class="o">...</span>
+    <span class="o">...</span> <span class="c1"># further operations</span>
+
+<span class="c1"># resume previous experiment and recorder</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">,</span> <span class="n">recorder_name</span><span class="o">=</span><span class="s1">'recorder_1'</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span> <span class="c1"># if users want to resume recorder, they have to specify the exact same name for experiment and recorder.</span>
+    <span class="o">...</span> <span class="c1"># further operations</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – id of the experiment one wants to start.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the experiment one wants to start.</p></li>
+<li><p><strong>recorder_id</strong> (<em>str</em>) – id of the recorder under the experiment one wants to start.</p></li>
+<li><p><strong>recorder_name</strong> (<em>str</em>) – name of the recorder under the experiment one wants to start.</p></li>
+<li><p><strong>uri</strong> (<em>str</em>) – The tracking uri of the experiment, where all the artifacts/metrics etc. will be stored.
+The default uri is set in the qlib.config. Note that this uri argument will not change the one defined in the config file.
+Therefore, the next time when users call this function in the same experiment,
+they have to also specify this argument with the same value. Otherwise, inconsistent uri may occur.</p></li>
+<li><p><strong>resume</strong> (<em>bool</em>) – whether to resume the specific recorder with given name under the given experiment.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.start_exp">
+<span class="sig-name descname"><span class="pre">start_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.start_exp" title="Permalink to this definition"></a></dt>
+<dd><p>Lower level method for starting an experiment. When use this method, one should end the experiment manually
+and the status of the recorder may not be handled properly. Here is the example code:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">R</span><span class="o">.</span><span class="n">start_exp</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">,</span> <span class="n">recorder_name</span><span class="o">=</span><span class="s1">'recorder_1'</span><span class="p">)</span>
+<span class="o">...</span> <span class="c1"># further operations</span>
+<span class="n">R</span><span class="o">.</span><span class="n">end_exp</span><span class="p">(</span><span class="s1">'FINISHED'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">R</span><span class="o">.</span><span class="n">end_exp</span><span class="p">(</span><span class="n">Recorder</span><span class="o">.</span><span class="n">STATUS_S</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – id of the experiment one wants to start.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – the name of the experiment to be started</p></li>
+<li><p><strong>recorder_id</strong> (<em>str</em>) – id of the recorder under the experiment one wants to start.</p></li>
+<li><p><strong>recorder_name</strong> (<em>str</em>) – name of the recorder under the experiment one wants to start.</p></li>
+<li><p><strong>uri</strong> (<em>str</em>) – the tracking uri of the experiment, where all the artifacts/metrics etc. will be stored.
+The default uri are set in the qlib.config.</p></li>
+<li><p><strong>resume</strong> (<em>bool</em>) – whether to resume the specific recorder with given name under the given experiment.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>An experiment instance being started.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.end_exp">
+<span class="sig-name descname"><span class="pre">end_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'FINISHED'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.end_exp" title="Permalink to this definition"></a></dt>
+<dd><p>Method for ending an experiment manually. It will end the current active experiment, as well as its
+active recorder with the specified <cite>status</cite> type. Here is the example code of the method:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">R</span><span class="o">.</span><span class="n">start_exp</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">)</span>
+<span class="o">...</span> <span class="c1"># further operations</span>
+<span class="n">R</span><span class="o">.</span><span class="n">end_exp</span><span class="p">(</span><span class="s1">'FINISHED'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">R</span><span class="o">.</span><span class="n">end_exp</span><span class="p">(</span><span class="n">Recorder</span><span class="o">.</span><span class="n">STATUS_S</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>status</strong> (<em>str</em>) – The status of a recorder, which can be SCHEDULED, RUNNING, FINISHED, FAILED.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.search_records">
+<span class="sig-name descname"><span class="pre">search_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_ids</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.search_records" title="Permalink to this definition"></a></dt>
+<dd><p>Get a pandas DataFrame of records that fit the search criteria.</p>
+<p>The arguments of this function are not set to be rigid, and they will be different with different implementation of
+<code class="docutils literal notranslate"><span class="pre">ExpManager</span></code> in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>. <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> now provides an implementation of <code class="docutils literal notranslate"><span class="pre">ExpManager</span></code> with mlflow, and here is the
+example code of the method with the <code class="docutils literal notranslate"><span class="pre">MLflowExpManager</span></code>:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">R</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="n">m</span><span class="o">=</span><span class="mf">2.50</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">records</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">search_records</span><span class="p">([</span><span class="n">experiment_id</span><span class="p">],</span> <span class="n">order_by</span><span class="o">=</span><span class="p">[</span><span class="s2">"metrics.m DESC"</span><span class="p">])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_ids</strong> (<em>list</em>) – list of experiment IDs.</p></li>
+<li><p><strong>filter_string</strong> (<em>str</em>) – filter query string, defaults to searching all runs.</p></li>
+<li><p><strong>run_view_type</strong> (<em>int</em>) – one of enum values ACTIVE_ONLY, DELETED_ONLY, or ALL (e.g. in mlflow.entities.ViewType).</p></li>
+<li><p><strong>max_results</strong> (<em>int</em>) – the maximum number of runs to put in the dataframe.</p></li>
+<li><p><strong>order_by</strong> (<em>list</em>) – list of columns to order by (e.g., “metrics.rmse”).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>A pandas.DataFrame of records, where each metric, parameter, and tag</em></p></li>
+<li><p><em>are expanded into their own columns named metrics.</em>, params.*, and tags.**</p></li>
+<li><p><em>respectively. For records that don’t have a particular metric, parameter, or tag, their</em></p></li>
+<li><p><em>value will be (NumPy) Nan, None, or None respectively.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.list_experiments">
+<span class="sig-name descname"><span class="pre">list_experiments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.list_experiments" title="Permalink to this definition"></a></dt>
+<dd><p>Method for listing all the existing experiments (except for those being deleted.)</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">exps</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">list_experiments</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary (name -&gt; experiment) of experiments information that being stored.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.list_recorders">
+<span class="sig-name descname"><span class="pre">list_recorders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.list_recorders" title="Permalink to this definition"></a></dt>
+<dd><p>Method for listing all the recorders of experiment with given id or name.</p>
+<p>If user doesn’t provide the id or name of the experiment, this method will try to retrieve the default experiment and
+list all the recorders of the default experiment. If the default experiment doesn’t exist, the method will first
+create the default experiment, and then create a new recorder under it. (More information about the default experiment
+can be found <a class="reference external" href="../component/recorder.html#qlib.workflow.exp.Experiment">here</a>).</p>
+<p>Here is the example code:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">recorders</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">list_recorders</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – id of the experiment.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the experiment.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary (id -&gt; recorder) of recorder information that being stored.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.get_exp">
+<span class="sig-name descname"><span class="pre">get_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">create</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.workflow.exp.Experiment" title="qlib.workflow.exp.Experiment"><span class="pre">Experiment</span></a></span></span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.get_exp" title="Permalink to this definition"></a></dt>
+<dd><p>Method for retrieving an experiment with given id or name. Once the <cite>create</cite> argument is set to
+True, if no valid experiment is found, this method will create one for you. Otherwise, it will
+only retrieve a specific experiment or raise an Error.</p>
+<ul>
+<li><p>If ‘<cite>create</cite>’ is True:</p>
+<blockquote>
+<div><ul>
+<li><p>If <cite>active experiment</cite> exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, return the active experiment.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, create a new experiment with given id or name.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If <cite>active experiment</cite> not exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, create a default experiment, and the experiment is set to be active.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, create a new experiment with given name or the default experiment.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Else If ‘<cite>create</cite>’ is False:</p>
+<blockquote>
+<div><ul>
+<li><p>If <cite>active experiment</cite> exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, return the active experiment.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, raise Error.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If <cite>active experiment</cite> not exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified. If the default experiment exists, return it, otherwise, raise Error.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, raise Error.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>Here are some use cases:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Case 1</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">exp</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_exp</span><span class="p">()</span>
+    <span class="n">recorders</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">list_recorders</span><span class="p">()</span>
+
+<span class="c1"># Case 2</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">exp</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_exp</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test1'</span><span class="p">)</span>
+
+<span class="c1"># Case 3</span>
+<span class="n">exp</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_exp</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">a</span> <span class="n">default</span> <span class="n">experiment</span><span class="o">.</span>
+
+<span class="c1"># Case 4</span>
+<span class="n">exp</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_exp</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">)</span>
+
+<span class="c1"># Case 5</span>
+<span class="n">exp</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_exp</span><span class="p">(</span><span class="n">create</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">the</span> <span class="n">default</span> <span class="n">experiment</span> <span class="k">if</span> <span class="n">exists</span><span class="o">.</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – id of the experiment.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the experiment.</p></li>
+<li><p><strong>create</strong> (<em>boolean</em>) – an argument determines whether the method will automatically create a new experiment
+according to user’s specification if the experiment hasn’t been created before.</p></li>
+<li><p><strong>start</strong> (<em>bool</em>) – when start is True,
+if the experiment has not started(not activated), it will start
+It is designed for R.log_params to auto start experiments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>An experiment instance with given id or name.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.delete_exp">
+<span class="sig-name descname"><span class="pre">delete_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.delete_exp" title="Permalink to this definition"></a></dt>
+<dd><p>Method for deleting the experiment with given id or name. At least one of id or name must be given,
+otherwise, error will occur.</p>
+<p>Here is the example code:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">R</span><span class="o">.</span><span class="n">delete_exp</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – id of the experiment.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the experiment.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.get_uri">
+<span class="sig-name descname"><span class="pre">get_uri</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.get_uri" title="Permalink to this definition"></a></dt>
+<dd><p>Method for retrieving the uri of current experiment manager.</p>
+<p>Here is the example code:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">uri</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_uri</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The uri of current experiment manager.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.set_uri">
+<span class="sig-name descname"><span class="pre">set_uri</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.set_uri" title="Permalink to this definition"></a></dt>
+<dd><p>Method to reset the <strong>default</strong> uri of current experiment manager.</p>
+<p>NOTE:</p>
+<ul class="simple">
+<li><p>When the uri is refer to a file path, please using the absolute path instead of strings like “~/mlruns/”
+The backend don’t support strings like this.</p></li>
+</ul>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.uri_context">
+<span class="sig-name descname"><span class="pre">uri_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.uri_context" title="Permalink to this definition"></a></dt>
+<dd><p>Temporarily set the exp_manager’s <strong>default_uri</strong> to uri</p>
+<p>NOTE:
+- Please refer to the NOTE in the <cite>set_uri</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>uri</strong> (<em>Text</em>) – the temporal uri</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.get_recorder">
+<span class="sig-name descname"><span class="pre">get_recorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.get_recorder" title="Permalink to this definition"></a></dt>
+<dd><p>Method for retrieving a recorder.</p>
+<ul>
+<li><p>If <cite>active recorder</cite> exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, return the active recorder.</p></li>
+<li><p>if id or name is specified, return the specified recorder.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If <cite>active recorder</cite> not exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, raise Error.</p></li>
+<li><p>if id or name is specified, and the corresponding experiment_name must be given, return the specified recorder. Otherwise, raise Error.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>The recorder can be used for further process such as <cite>save_object</cite>, <cite>load_object</cite>, <cite>log_params</cite>,
+<cite>log_metrics</cite>, etc.</p>
+<p>Here are some use cases:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Case 1</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">recorder</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">()</span>
+
+<span class="c1"># Case 2</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">recorder</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">(</span><span class="n">recorder_id</span><span class="o">=</span><span class="s1">'2e7a4efd66574fa49039e00ffaefa99d'</span><span class="p">)</span>
+
+<span class="c1"># Case 3</span>
+<span class="n">recorder</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Error</span>
+
+<span class="c1"># Case 4</span>
+<span class="n">recorder</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">(</span><span class="n">recorder_id</span><span class="o">=</span><span class="s1">'2e7a4efd66574fa49039e00ffaefa99d'</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Error</span>
+
+<span class="c1"># Case 5</span>
+<span class="n">recorder</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">(</span><span class="n">recorder_id</span><span class="o">=</span><span class="s1">'2e7a4efd66574fa49039e00ffaefa99d'</span><span class="p">,</span> <span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here are some things users may concern
+- Q: What recorder will it return if multiple recorder meets the query (e.g. query with experiment_name)
+- A: If mlflow backend is used, then the recorder with the latest <cite>start_time</cite> will be returned. Because MLflow’s <cite>search_runs</cite> function guarantee it</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>recorder_id</strong> (<em>str</em>) – id of the recorder.</p></li>
+<li><p><strong>recorder_name</strong> (<em>str</em>) – name of the recorder.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the experiment.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>A recorder instance.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.delete_recorder">
+<span class="sig-name descname"><span class="pre">delete_recorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.delete_recorder" title="Permalink to this definition"></a></dt>
+<dd><p>Method for deleting the recorders with given id or name. At least one of id or name must be given,
+otherwise, error will occur.</p>
+<p>Here is the example code:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">R</span><span class="o">.</span><span class="n">delete_recorder</span><span class="p">(</span><span class="n">recorder_id</span><span class="o">=</span><span class="s1">'2e7a4efd66574fa49039e00ffaefa99d'</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>recorder_id</strong> (<em>str</em>) – id of the experiment.</p></li>
+<li><p><strong>recorder_name</strong> (<em>str</em>) – name of the experiment.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.save_objects">
+<span class="sig-name descname"><span class="pre">save_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.save_objects" title="Permalink to this definition"></a></dt>
+<dd><p>Method for saving objects as artifacts in the experiment to the uri. It supports either saving
+from a local file/directory, or directly saving objects. User can use valid python’s keywords arguments
+to specify the object to be saved as well as its name (name: value).</p>
+<p>In summary, this API is designs for saving <strong>objects</strong> to <strong>the experiments management backend path</strong>,
+1. Qlib provide two methods to specify <strong>objects</strong>
+- Passing in the object directly by passing with <cite>**kwargs</cite> (e.g. R.save_objects(trained_model=model))
+- Passing in the local path to the object, i.e. <cite>local_path</cite> parameter.
+2. <cite>artifact_path</cite> represents the  <strong>the experiments management backend path</strong></p>
+<ul class="simple">
+<li><p>If <cite>active recorder</cite> exists: it will save the objects through the active recorder.</p></li>
+<li><p>If <cite>active recorder</cite> not exists: the system will create a default experiment, and a new recorder and save objects under it.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If one wants to save objects with a specific recorder. It is recommended to first get the specific recorder through <cite>get_recorder</cite> API and use the recorder the save objects. The supported arguments are the same as this method.</p>
+</div>
+<p>Here are some use cases:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Case 1</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="n">R</span><span class="o">.</span><span class="n">save_objects</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="s2">"pred.pkl"</span><span class="p">:</span> <span class="n">pred</span><span class="p">},</span> <span class="n">artifact_path</span><span class="o">=</span><span class="s1">'prediction'</span><span class="p">)</span>
+    <span class="n">rid</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">()</span><span class="o">.</span><span class="n">id</span>
+<span class="o">...</span>
+<span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">(</span><span class="n">recorder_id</span><span class="o">=</span><span class="n">rid</span><span class="p">)</span><span class="o">.</span><span class="n">load_object</span><span class="p">(</span><span class="s2">"prediction/pred.pkl"</span><span class="p">)</span>  <span class="c1">#  after saving objects, you can load the previous object with this api</span>
+
+<span class="c1"># Case 2</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">R</span><span class="o">.</span><span class="n">save_objects</span><span class="p">(</span><span class="n">local_path</span><span class="o">=</span><span class="s1">'results/pred.pkl'</span><span class="p">,</span> <span class="n">artifact_path</span><span class="o">=</span><span class="s2">"prediction"</span><span class="p">)</span>
+    <span class="n">rid</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">()</span><span class="o">.</span><span class="n">id</span>
+<span class="o">...</span>
+<span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">(</span><span class="n">recorder_id</span><span class="o">=</span><span class="n">rid</span><span class="p">)</span><span class="o">.</span><span class="n">load_object</span><span class="p">(</span><span class="s2">"prediction/pred.pkl"</span><span class="p">)</span>  <span class="c1">#  after saving objects, you can load the previous object with this api</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_path</strong> (<em>str</em>) – if provided, them save the file or directory to the artifact URI.</p></li>
+<li><p><strong>artifact_path</strong> (<em>str</em>) – the relative path for the artifact to be stored in the URI.</p></li>
+<li><p><strong>**kwargs</strong> (<em>Dict</em><em>[</em><em>Text</em><em>, </em><em>Any</em><em>]</em>) – the object to be saved.
+For example, <cite>{“pred.pkl”: pred}</cite></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.load_object">
+<span class="sig-name descname"><span class="pre">load_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.load_object" title="Permalink to this definition"></a></dt>
+<dd><p>Method for loading an object from artifacts in the experiment in the uri.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.log_params">
+<span class="sig-name descname"><span class="pre">log_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.log_params" title="Permalink to this definition"></a></dt>
+<dd><p>Method for logging parameters during an experiment. In addition to using <code class="docutils literal notranslate"><span class="pre">R</span></code>, one can also log to a specific recorder after getting it with <cite>get_recorder</cite> API.</p>
+<ul class="simple">
+<li><p>If <cite>active recorder</cite> exists: it will log parameters through the active recorder.</p></li>
+<li><p>If <cite>active recorder</cite> not exists: the system will create a default experiment as well as a new recorder, and log parameters under it.</p></li>
+</ul>
+<p>Here are some use cases:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Case 1</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">R</span><span class="o">.</span><span class="n">log_params</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="c1"># Case 2</span>
+<span class="n">R</span><span class="o">.</span><span class="n">log_params</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>argument</strong> (<em>keyword</em>) – name1=value1, name2=value2, …</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.log_metrics">
+<span class="sig-name descname"><span class="pre">log_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.log_metrics" title="Permalink to this definition"></a></dt>
+<dd><p>Method for logging metrics during an experiment. In addition to using <code class="docutils literal notranslate"><span class="pre">R</span></code>, one can also log to a specific recorder after getting it with <cite>get_recorder</cite> API.</p>
+<ul class="simple">
+<li><p>If <cite>active recorder</cite> exists: it will log metrics through the active recorder.</p></li>
+<li><p>If <cite>active recorder</cite> not exists: the system will create a default experiment as well as a new recorder, and log metrics under it.</p></li>
+</ul>
+<p>Here are some use cases:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Case 1</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">R</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="n">train_loss</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Case 2</span>
+<span class="n">R</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="n">train_loss</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>argument</strong> (<em>keyword</em>) – name1=value1, name2=value2, …</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.log_artifact">
+<span class="sig-name descname"><span class="pre">log_artifact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.log_artifact" title="Permalink to this definition"></a></dt>
+<dd><p>Log a local file or directory as an artifact of the currently active run</p>
+<ul class="simple">
+<li><p>If <cite>active recorder</cite> exists: it will set tags through the active recorder.</p></li>
+<li><p>If <cite>active recorder</cite> not exists: the system will create a default experiment as well as a new recorder, and set the tags under it.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_path</strong> (<em>str</em>) – Path to the file to write.</p></li>
+<li><p><strong>artifact_path</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – If provided, the directory in <code class="docutils literal notranslate"><span class="pre">artifact_uri</span></code> to write to.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.download_artifact">
+<span class="sig-name descname"><span class="pre">download_artifact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.download_artifact" title="Permalink to this definition"></a></dt>
+<dd><p>Download an artifact file or directory from a run to a local directory if applicable,
+and return a local path for it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Relative source path to the desired artifact.</p></li>
+<li><p><strong>dst_path</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Absolute path of the local filesystem destination directory to which to
+download the specified artifacts. This directory must already exist.
+If unspecified, the artifacts will either be downloaded to a new
+uniquely-named directory on the local filesystem.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Local path of desired artifact.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.workflow.__init__.QlibRecorder.set_tags">
+<span class="sig-name descname"><span class="pre">set_tags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.workflow.__init__.QlibRecorder.set_tags" title="Permalink to this definition"></a></dt>
+<dd><p>Method for setting tags for a recorder. In addition to using <code class="docutils literal notranslate"><span class="pre">R</span></code>, one can also set the tag to a specific recorder after getting it with <cite>get_recorder</cite> API.</p>
+<ul class="simple">
+<li><p>If <cite>active recorder</cite> exists: it will set tags through the active recorder.</p></li>
+<li><p>If <cite>active recorder</cite> not exists: the system will create a default experiment as well as a new recorder, and set the tags under it.</p></li>
+</ul>
+<p>Here are some use cases:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Case 1</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s1">'test'</span><span class="p">):</span>
+    <span class="n">R</span><span class="o">.</span><span class="n">set_tags</span><span class="p">(</span><span class="n">release_version</span><span class="o">=</span><span class="s2">"2.2.0"</span><span class="p">)</span>
+
+<span class="c1"># Case 2</span>
+<span class="n">R</span><span class="o">.</span><span class="n">set_tags</span><span class="p">(</span><span class="n">release_version</span><span class="o">=</span><span class="s2">"2.2.0"</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>argument</strong> (<em>keyword</em>) – name1=value1, name2=value2, …</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="experiment-manager">
+<h2>Experiment Manager<a class="headerlink" href="#experiment-manager" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">ExpManager</span></code> module in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is responsible for managing different experiments. Most of the APIs of <code class="docutils literal notranslate"><span class="pre">ExpManager</span></code> are similar to <code class="docutils literal notranslate"><span class="pre">QlibRecorder</span></code>, and the most important API will be the <code class="docutils literal notranslate"><span class="pre">get_exp</span></code> method. User can directly refer to the documents above for some detailed information about how to use the <code class="docutils literal notranslate"><span class="pre">get_exp</span></code> method.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.expm.</span></span><span class="sig-name descname"><span class="pre">ExpManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_exp_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>This is the <cite>ExpManager</cite> class for managing experiments. The API is designed similar to mlflow.
+(The link: <a class="reference external" href="https://mlflow.org/docs/latest/python_api/mlflow.html">https://mlflow.org/docs/latest/python_api/mlflow.html</a>)</p>
+<p>The <cite>ExpManager</cite> is expected to be a singleton (btw, we can have multiple <cite>Experiment`s with different uri. user can get different experiments from different uri, and then compare records of them). Global Config (i.e. `C</cite>)  is also a singleton.</p>
+<p>So we try to align them together.  They share the same variable, which is called <strong>default uri</strong>. Please refer to <cite>ExpManager.default_uri</cite> for details of variable sharing.</p>
+<p>When the user starts an experiment, the user may want to set the uri to a specific uri (it will override <strong>default uri</strong> during this period), and then unset the <strong>specific uri</strong> and fallback to the <strong>default uri</strong>.    <cite>ExpManager._active_exp_uri</cite> is that <strong>specific uri</strong>.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_exp_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.workflow.exp.Experiment" title="qlib.workflow.exp.Experiment"><span class="pre">Experiment</span></a></span></span></dt>
+<dd><p>Start an experiment. This method includes first get_or_create an experiment, and then
+set it to be active.</p>
+<p>Maintaining <cite>_active_exp_uri</cite> is included in start_exp, remaining implementation should be included in _end_exp in subclass</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – id of the active experiment.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the active experiment.</p></li>
+<li><p><strong>recorder_id</strong> (<em>str</em>) – id of the recorder to be started.</p></li>
+<li><p><strong>recorder_name</strong> (<em>str</em>) – name of the recorder to be started.</p></li>
+<li><p><strong>uri</strong> (<em>str</em>) – the current tracking URI.</p></li>
+<li><p><strong>resume</strong> (<em>boolean</em>) – whether to resume the experiment and recorder.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>An active experiment.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">end_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder_status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'SCHEDULED'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>End an active experiment.</p>
+<p>Maintaining <cite>_active_exp_uri</cite> is included in end_exp, remaining implementation should be included in _end_exp in subclass</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the active experiment.</p></li>
+<li><p><strong>recorder_status</strong> (<em>str</em>) – the status of the active recorder of the experiment.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">create_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Create an experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>experiment_name</strong> (<em>str</em>) – the experiment name, which must be unique.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>An experiment object.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ExpAlreadyExistError</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">search_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Get a pandas DataFrame of records that fit the search criteria of the experiment.
+Inputs are the search criteria user want to apply.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><em>A pandas.DataFrame of records, where each metric, parameter, and tag</em></p></li>
+<li><p><em>are expanded into their own columns named metrics.</em>, params.*, and tags.**</p></li>
+<li><p><em>respectively. For records that don’t have a particular metric, parameter, or tag, their</em></p></li>
+<li><p><em>value will be (NumPy) Nan, None, or None respectively.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">create</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Retrieve an experiment. This method includes getting an active experiment, and get_or_create a specific experiment.</p>
+<p>When user specify experiment id and name, the method will try to return the specific experiment.
+When user does not provide recorder id or name, the method will try to return the current active experiment.
+The <cite>create</cite> argument determines whether the method will automatically create a new experiment according
+to user’s specification if the experiment hasn’t been created before.</p>
+<ul>
+<li><p>If <cite>create</cite> is True:</p>
+<blockquote>
+<div><ul>
+<li><p>If <cite>active experiment</cite> exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, return the active experiment.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, create a new experiment with given id or name. If <cite>start</cite> is set to be True, the experiment is set to be active.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If <cite>active experiment</cite> not exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, create a default experiment.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, create a new experiment with given id or name. If <cite>start</cite> is set to be True, the experiment is set to be active.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Else If <cite>create</cite> is False:</p>
+<blockquote>
+<div><ul>
+<li><p>If <cite>active experiment</cite> exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, return the active experiment.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, raise Error.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If <cite>active experiment</cite> not exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified. If the default experiment exists, return it, otherwise, raise Error.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, raise Error.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – id of the experiment to return.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – name of the experiment to return.</p></li>
+<li><p><strong>create</strong> (<em>boolean</em>) – create the experiment it if hasn’t been created before.</p></li>
+<li><p><strong>start</strong> (<em>boolean</em>) – start the new experiment if one is created.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>An experiment object.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">delete_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Delete an experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_id</strong> (<em>str</em>) – the experiment id.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em>) – the experiment name.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_uri</span></span></dt>
+<dd><p>Get the default tracking URI from qlib.config.C</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">uri</span></span></dt>
+<dd><p>Get the default tracking URI or current URI.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The tracking URI string.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">list_experiments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>List all the existing experiments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary (name -&gt; experiment) of experiments information that being stored.</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p>For other interfaces such as <cite>create_exp</cite>, <cite>delete_exp</cite>, please refer to <a class="reference external" href="../reference/api.html#experiment-manager">Experiment Manager API</a>.</p>
+</section>
+<section id="experiment">
+<h2>Experiment<a class="headerlink" href="#experiment" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Experiment</span></code> class is solely responsible for a single experiment, and it will handle any operations that are related to an experiment. Basic methods such as <cite>start</cite>, <cite>end</cite> an experiment are included. Besides, methods related to <cite>recorders</cite> are also available: such methods include <cite>get_recorder</cite> and <cite>list_recorders</cite>.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.exp.</span></span><span class="sig-name descname"><span class="pre">Experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>This is the <cite>Experiment</cite> class for each experiment being run. The API is designed similar to mlflow.
+(The link: <a class="reference external" href="https://mlflow.org/docs/latest/python_api/mlflow.html">https://mlflow.org/docs/latest/python_api/mlflow.html</a>)</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Start the experiment and set it to be active. This method will also start a new recorder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>recorder_id</strong> (<em>str</em>) – the id of the recorder to be created.</p></li>
+<li><p><strong>recorder_name</strong> (<em>str</em>) – the name of the recorder to be created.</p></li>
+<li><p><strong>resume</strong> (<em>bool</em>) – whether to resume the first recorder</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>An active recorder.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'SCHEDULED'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>End the experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>recorder_status</strong> (<em>str</em>) – the status the recorder to be set with when ending (SCHEDULED, RUNNING, FINISHED, FAILED).</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">create_recorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Create a recorder for each experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>recorder_name</strong> (<em>str</em>) – the name of the recorder to be created.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>A recorder object.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">search_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Get a pandas DataFrame of records that fit the search criteria of the experiment.
+Inputs are the search criteria user want to apply.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><em>A pandas.DataFrame of records, where each metric, parameter, and tag</em></p></li>
+<li><p><em>are expanded into their own columns named metrics.</em>, params.*, and tags.**</p></li>
+<li><p><em>respectively. For records that don’t have a particular metric, parameter, or tag, their</em></p></li>
+<li><p><em>value will be (NumPy) Nan, None, or None respectively.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">delete_recorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Create a recorder for each experiment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>recorder_id</strong> (<em>str</em>) – the id of the recorder to be deleted.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_recorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recorder_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recorder_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">create</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a></span></span></dt>
+<dd><p>Retrieve a Recorder for user. When user specify recorder id and name, the method will try to return the
+specific recorder. When user does not provide recorder id or name, the method will try to return the current
+active recorder. The <cite>create</cite> argument determines whether the method will automatically create a new recorder
+according to user’s specification if the recorder hasn’t been created before.</p>
+<ul>
+<li><p>If <cite>create</cite> is True:</p>
+<blockquote>
+<div><ul>
+<li><p>If <cite>active recorder</cite> exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, return the active recorder.</p></li>
+<li><p>if id or name is specified, return the specified recorder. If no such exp found, create a new recorder with given id or name. If <cite>start</cite> is set to be True, the recorder is set to be active.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If <cite>active recorder</cite> not exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, create a new recorder.</p></li>
+<li><p>if id or name is specified, return the specified experiment. If no such exp found, create a new recorder with given id or name. If <cite>start</cite> is set to be True, the recorder is set to be active.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Else If <cite>create</cite> is False:</p>
+<blockquote>
+<div><ul>
+<li><p>If <cite>active recorder</cite> exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, return the active recorder.</p></li>
+<li><p>if id or name is specified, return the specified recorder. If no such exp found, raise Error.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If <cite>active recorder</cite> not exists:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>no id or name specified, raise Error.</p></li>
+<li><p>if id or name is specified, return the specified recorder. If no such exp found, raise Error.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>recorder_id</strong> (<em>str</em>) – the id of the recorder to be deleted.</p></li>
+<li><p><strong>recorder_name</strong> (<em>str</em>) – the name of the recorder to be deleted.</p></li>
+<li><p><strong>create</strong> (<em>boolean</em>) – create the recorder if it hasn’t been created before.</p></li>
+<li><p><strong>start</strong> (<em>boolean</em>) – start the new recorder if one is <strong>created</strong>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>A recorder object.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">list_recorders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'dict'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'list'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'dict'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">flt_kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../reference/api.html#qlib.workflow.recorder.Recorder" title="qlib.workflow.recorder.Recorder"><span class="pre">Recorder</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>List all the existing recorders of this experiment. Please first get the experiment instance before calling this method.
+If user want to use the method <cite>R.list_recorders()</cite>, please refer to the related API document in <cite>QlibRecorder</cite>.</p>
+<dl class="simple">
+<dt>flt_kwargs<span class="classifier">dict</span></dt><dd><p>filter recorders by conditions
+e.g.  list_recorders(status=Recorder.STATUS_FI)</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>if <cite>rtype</cite> == “dict”:</dt><dd><p>A dictionary (id -&gt; recorder) of recorder information that being stored.</p>
+</dd>
+<dt>elif <cite>rtype</cite> == “list”:</dt><dd><p>A list of Recorder.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>The return type depends on <cite>rtype</cite></p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p>For other interfaces such as <cite>search_records</cite>, <cite>delete_recorder</cite>, please refer to <a class="reference external" href="../reference/api.html#experiment">Experiment API</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> also provides a default <code class="docutils literal notranslate"><span class="pre">Experiment</span></code>, which will be created and used under certain situations when users use the APIs such as <cite>log_metrics</cite> or <cite>get_exp</cite>. If the default <code class="docutils literal notranslate"><span class="pre">Experiment</span></code> is used, there will be related logged information when running <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>. Users are able to change the name of the default <code class="docutils literal notranslate"><span class="pre">Experiment</span></code> in the config file of <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> or during <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>’s <a class="reference external" href="../start/initialization.html#parameters">initialization</a>, which is set to be ‘<cite>Experiment</cite>’.</p>
+</section>
+<section id="id1">
+<h2>Recorder<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Recorder</span></code> class is responsible for a single recorder. It will handle some detailed operations such as <code class="docutils literal notranslate"><span class="pre">log_metrics</span></code>, <code class="docutils literal notranslate"><span class="pre">log_params</span></code> of a single run. It is designed to help user to easily track results and things being generated during a run.</p>
+<p>Here are some important APIs that are not included in the <code class="docutils literal notranslate"><span class="pre">QlibRecorder</span></code>:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.workflow.recorder.</span></span><span class="sig-name descname"><span class="pre">Recorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>This is the <cite>Recorder</cite> class for logging the experiments. The API is designed similar to mlflow.
+(The link: <a class="reference external" href="https://mlflow.org/docs/latest/python_api/mlflow.html">https://mlflow.org/docs/latest/python_api/mlflow.html</a>)</p>
+<p>The status of the recorder can be SCHEDULED, RUNNING, FINISHED, FAILED.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">save_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Save objects such as prediction file or model checkpoints to the artifact URI. User
+can save object through keywords arguments (name:value).</p>
+<p>Please refer to the docs of qlib.workflow:R.save_objects</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_path</strong> (<em>str</em>) – if provided, them save the file or directory to the artifact URI.</p></li>
+<li><p><strong>artifact_path=None</strong> (<em>str</em>) – the relative path for the artifact to be stored in the URI.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">load_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Load objects such as prediction file or model checkpoints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – name of the file to be loaded.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>The saved object.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start_run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>Start running or resuming the Recorder. The return value can be used as a context manager within a <cite>with</cite> block;
+otherwise, you must call end_run() to terminate the current run. (See <cite>ActiveRun</cite> class in mlflow)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>An active running object (e.g. mlflow.ActiveRun object).</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">end_run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>End an active Recorder.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">log_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Log a batch of params for the current run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>arguments</strong> (<em>keyword</em>) – key, value pair to be logged as parameters.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">log_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Log multiple metrics for the current run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>arguments</strong> (<em>keyword</em>) – key, value pair to be logged as metrics.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">log_artifact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Log a local file or directory as an artifact of the currently active run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_path</strong> (<em>str</em>) – Path to the file to write.</p></li>
+<li><p><strong>artifact_path</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – If provided, the directory in <code class="docutils literal notranslate"><span class="pre">artifact_uri</span></code> to write to.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">set_tags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Log a batch of tags for the current run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>arguments</strong> (<em>keyword</em>) – key, value pair to be logged as tags.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">delete_tags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">keys</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Delete some tags from a run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>keys</strong> (<em>series</em><em> of </em><em>strs</em><em> of </em><em>the keys</em>) – all the name of the tag to be deleted.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">list_artifacts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">artifact_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>List all the artifacts of a recorder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>artifact_path</strong> (<em>str</em>) – the relative path for the artifact to be stored in the URI.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of artifacts information (name, path, etc.) that being stored.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">download_artifact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span></dt>
+<dd><p>Download an artifact file or directory from a run to a local directory if applicable,
+and return a local path for it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Relative source path to the desired artifact.</p></li>
+<li><p><strong>dst_path</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Absolute path of the local filesystem destination directory to which to
+download the specified artifacts. This directory must already exist.
+If unspecified, the artifacts will either be downloaded to a new
+uniquely-named directory on the local filesystem.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Local path of desired artifact.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">list_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>List all the metrics of a recorder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary of metrics that being stored.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">list_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>List all the params of a recorder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary of params that being stored.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">list_tags</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>List all the tags of a recorder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary of tags that being stored.</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p>For other interfaces such as <cite>save_objects</cite>, <cite>load_object</cite>, please refer to <a class="reference external" href="../reference/api.html#recorder">Recorder API</a>.</p>
+</section>
+<section id="record-template">
+<h2>Record Template<a class="headerlink" href="#record-template" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">RecordTemp</span></code> class is a class that enables generate experiment results such as IC and backtest in a certain format. We have provided three different <cite>Record Template</cite> class:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">SignalRecord</span></code>: This class generates the <cite>prediction</cite> results of the model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SigAnaRecord</span></code>: This class generates the <cite>IC</cite>, <cite>ICIR</cite>, <cite>Rank IC</cite> and <cite>Rank ICIR</cite> of the model.</p></li>
+</ul>
+<p>Here is a simple example of what is done in <code class="docutils literal notranslate"><span class="pre">SigAnaRecord</span></code>, which users can refer to if they want to calculate IC, Rank IC, Long-Short Return with their own prediction and label.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.eva.alpha</span><span class="w"> </span><span class="kn">import</span> <span class="n">calc_ic</span><span class="p">,</span> <span class="n">calc_long_short_return</span>
+
+<span class="n">ic</span><span class="p">,</span> <span class="n">ric</span> <span class="o">=</span> <span class="n">calc_ic</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+<span class="n">long_short_r</span><span class="p">,</span> <span class="n">long_avg_r</span> <span class="o">=</span> <span class="n">calc_long_short_return</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PortAnaRecord</span></code>: This class generates the results of <cite>backtest</cite>. The detailed information about <cite>backtest</cite> as well as the available <cite>strategy</cite>, users can refer to <a class="reference external" href="../component/strategy.html">Strategy</a> and <a class="reference external" href="../component/backtest.html">Backtest</a>.</p></li>
+</ul>
+<p>Here is a simple example of what is done in <code class="docutils literal notranslate"><span class="pre">PortAnaRecord</span></code>, which users can refer to if they want to do backtest based on their own prediction and label.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.strategy.strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">TopkDropoutStrategy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.evaluate</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">backtest</span> <span class="k">as</span> <span class="n">normal_backtest</span><span class="p">,</span>
+    <span class="n">risk_analysis</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># backtest</span>
+<span class="n">STRATEGY_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"topk"</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s2">"n_drop"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">BACKTEST_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"limit_threshold"</span><span class="p">:</span> <span class="mf">0.095</span><span class="p">,</span>
+    <span class="s2">"account"</span><span class="p">:</span> <span class="mi">100000000</span><span class="p">,</span>
+    <span class="s2">"benchmark"</span><span class="p">:</span> <span class="n">BENCHMARK</span><span class="p">,</span>
+    <span class="s2">"deal_price"</span><span class="p">:</span> <span class="s2">"close"</span><span class="p">,</span>
+    <span class="s2">"open_cost"</span><span class="p">:</span> <span class="mf">0.0005</span><span class="p">,</span>
+    <span class="s2">"close_cost"</span><span class="p">:</span> <span class="mf">0.0015</span><span class="p">,</span>
+    <span class="s2">"min_cost"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">strategy</span> <span class="o">=</span> <span class="n">TopkDropoutStrategy</span><span class="p">(</span><span class="o">**</span><span class="n">STRATEGY_CONFIG</span><span class="p">)</span>
+<span class="n">report_normal</span><span class="p">,</span> <span class="n">positions_normal</span> <span class="o">=</span> <span class="n">normal_backtest</span><span class="p">(</span><span class="n">pred_score</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">,</span> <span class="o">**</span><span class="n">BACKTEST_CONFIG</span><span class="p">)</span>
+
+<span class="c1"># analysis</span>
+<span class="n">analysis</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+<span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_without_cost"</span><span class="p">]</span> <span class="o">=</span> <span class="n">risk_analysis</span><span class="p">(</span><span class="n">report_normal</span><span class="p">[</span><span class="s2">"return"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"bench"</span><span class="p">])</span>
+<span class="n">analysis</span><span class="p">[</span><span class="s2">"excess_return_with_cost"</span><span class="p">]</span> <span class="o">=</span> <span class="n">risk_analysis</span><span class="p">(</span><span class="n">report_normal</span><span class="p">[</span><span class="s2">"return"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"bench"</span><span class="p">]</span> <span class="o">-</span> <span class="n">report_normal</span><span class="p">[</span><span class="s2">"cost"</span><span class="p">])</span>
+<span class="n">analysis_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">analysis</span><span class="p">)</span>  <span class="c1"># type: pd.DataFrame</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">analysis_df</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For more information about the APIs, please refer to <a class="reference external" href="../reference/api.html#module-qlib.workflow.record_temp">Record Template API</a>.</p>
+</section>
+<section id="known-limitations">
+<h2>Known Limitations<a class="headerlink" href="#known-limitations" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>The Python objects are saved based on pickle, which may results in issues when the environment dumping objects and loading objects are different.</p></li>
+</ul>
+</section>
+</section>
+</div>
+</body>
+</html>

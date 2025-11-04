@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="building-formulaic-alphas">
+<span id="alpha"></span><h1>Building Formulaic Alphas<a class="headerlink" href="#building-formulaic-alphas" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p>In quantitative trading practice, designing novel factors that can explain and predict future asset returns are of vital importance to the profitability of a strategy. Such factors are usually called alpha factors, or alphas in short.</p>
+<p>A formulaic alpha, as the name suggests, is a kind of alpha that can be presented as a formula or a mathematical expression.</p>
+</section>
+<section id="building-formulaic-alphas-in-qlib">
+<h2>Building Formulaic Alphas in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code><a class="headerlink" href="#building-formulaic-alphas-in-qlib" title="Permalink to this heading"></a></h2>
+<p>In <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, users can easily build formulaic alphas.</p>
+<section id="example">
+<h3>Example<a class="headerlink" href="#example" title="Permalink to this heading"></a></h3>
+<p><cite>MACD</cite>, short for moving average convergence/divergence, is a formulaic alpha used in technical analysis of stock prices. It is designed to reveal changes in the strength, direction, momentum, and duration of a trend in a stock’s price.</p>
+<p><cite>MACD</cite> can be presented as the following formula:</p>
+<div class="math notranslate nohighlight">
+\[MACD = 2\times (DIF-DEA)\]</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><cite>DIF</cite> means Differential value, which is 12-period EMA minus 26-period EMA.</p>
+<div class="math notranslate nohighlight">
+\[DIF = \frac{EMA(CLOSE, 12) - EMA(CLOSE, 26)}{CLOSE}\]</div>
+<p><cite>DEA</cite> means a 9-period EMA of the DIF.</p>
+<div class="math notranslate nohighlight">
+\[DEA = \frac{EMA(DIF, 9)}{CLOSE}\]</div>
+</div>
+<p>Users can use <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> to build formulaic alphas <cite>MACD</cite> in qlib:</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Users need to initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> with <cite>qlib.init</cite> first.  Please refer to <a class="reference external" href="../start/initialization.html">initialization</a>.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data.dataset.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">QlibDataLoader</span>
+<span class="o">&gt;&gt;</span> <span class="n">MACD_EXP</span> <span class="o">=</span> <span class="s1">'(EMA($close, 12) - EMA($close, 26))/$close - EMA((EMA($close, 12) - EMA($close, 26))/$close, 9)/$close'</span>
+<span class="o">&gt;&gt;</span> <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">MACD_EXP</span><span class="p">]</span> <span class="c1"># MACD</span>
+<span class="o">&gt;&gt;</span> <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'MACD'</span><span class="p">]</span>
+<span class="o">&gt;&gt;</span> <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'Ref($close, -2)/Ref($close, -1) - 1'</span><span class="p">]</span> <span class="c1"># label</span>
+<span class="o">&gt;&gt;</span> <span class="n">label_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'LABEL'</span><span class="p">]</span>
+<span class="o">&gt;&gt;</span> <span class="n">data_loader_config</span> <span class="o">=</span> <span class="p">{</span>
+<span class="o">..</span>     <span class="s2">"feature"</span><span class="p">:</span> <span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">names</span><span class="p">),</span>
+<span class="o">..</span>     <span class="s2">"label"</span><span class="p">:</span> <span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">label_names</span><span class="p">)</span>
+<span class="o">..</span> <span class="p">}</span>
+<span class="o">&gt;&gt;</span> <span class="n">data_loader</span> <span class="o">=</span> <span class="n">QlibDataLoader</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">data_loader_config</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="n">df</span> <span class="o">=</span> <span class="n">data_loader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">instruments</span><span class="o">=</span><span class="s1">'csi300'</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2010-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2017-12-31'</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+                        <span class="n">feature</span>     <span class="n">label</span>
+                           <span class="n">MACD</span>     <span class="n">LABEL</span>
+<span class="n">datetime</span>   <span class="n">instrument</span>
+<span class="mi">2010</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span> <span class="n">SH600000</span>   <span class="o">-</span><span class="mf">0.011547</span> <span class="o">-</span><span class="mf">0.019672</span>
+           <span class="n">SH600004</span>    <span class="mf">0.002745</span> <span class="o">-</span><span class="mf">0.014721</span>
+           <span class="n">SH600006</span>    <span class="mf">0.010133</span>  <span class="mf">0.002911</span>
+           <span class="n">SH600008</span>   <span class="o">-</span><span class="mf">0.001113</span>  <span class="mf">0.009818</span>
+           <span class="n">SH600009</span>    <span class="mf">0.025878</span> <span class="o">-</span><span class="mf">0.017758</span>
+<span class="o">...</span>                         <span class="o">...</span>       <span class="o">...</span>
+<span class="mi">2017</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">29</span> <span class="n">SZ300124</span>    <span class="mf">0.007306</span> <span class="o">-</span><span class="mf">0.005074</span>
+           <span class="n">SZ300136</span>   <span class="o">-</span><span class="mf">0.013492</span>  <span class="mf">0.056352</span>
+           <span class="n">SZ300144</span>   <span class="o">-</span><span class="mf">0.000966</span>  <span class="mf">0.011853</span>
+           <span class="n">SZ300251</span>    <span class="mf">0.004383</span>  <span class="mf">0.021739</span>
+           <span class="n">SZ300315</span>   <span class="o">-</span><span class="mf">0.030557</span>  <span class="mf">0.012455</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this heading"></a></h2>
+<p>To learn more about <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Loader</span></code>, please refer to <a class="reference external" href="../component/data.html#data-loader">Data Loader</a></p>
+<p>To learn more about <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">API</span></code>, please refer to <a class="reference external" href="../component/data.html">Data API</a></p>
+</section>
+</section>
+</div>
+</body>
+</html>

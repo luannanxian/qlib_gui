@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="custom-model-integration">
+<h1>Custom Model Integration<a class="headerlink" href="#custom-model-integration" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code>’s <cite>Model Zoo</cite> includes models such as <code class="docutils literal notranslate"><span class="pre">LightGBM</span></code>, <code class="docutils literal notranslate"><span class="pre">MLP</span></code>, <code class="docutils literal notranslate"><span class="pre">LSTM</span></code>, etc.. These models are examples of <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code>. In addition to the default models <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provide, users can integrate their own custom models into <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>.</p>
+<p>Users can integrate their own custom models according to the following steps.</p>
+<ul class="simple">
+<li><p>Define a custom model class, which should be a subclass of the <a class="reference external" href="../reference/api.html#module-qlib.model.base">qlib.model.base.Model</a>.</p></li>
+<li><p>Write a configuration file that describes the path and parameters of the custom model.</p></li>
+<li><p>Test the custom model.</p></li>
+</ul>
+</section>
+<section id="custom-model-class">
+<h2>Custom Model Class<a class="headerlink" href="#custom-model-class" title="Permalink to this heading"></a></h2>
+<p>The Custom models need to inherit <a class="reference external" href="../reference/api.html#module-qlib.model.base">qlib.model.base.Model</a> and override the methods in it.</p>
+<ul>
+<li><dl>
+<dt>Override the <cite>__init__</cite> method</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> passes the initialized parameters to the __init__ method.</p></li>
+<li><p>The hyperparameters of model in the configuration must be consistent with those defined in the <cite>__init__</cite> method.</p></li>
+<li><p>Code Example: In the following example, the hyperparameters of model in the configuration file should contain parameters such as <cite>loss:mse</cite>.</p>
+<blockquote>
+<div><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="s1">'mse'</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">loss</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">'mse'</span><span class="p">,</span> <span class="s1">'binary'</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_scorer</span> <span class="o">=</span> <span class="n">mean_squared_error</span> <span class="k">if</span> <span class="n">loss</span> <span class="o">==</span> <span class="s1">'mse'</span> <span class="k">else</span> <span class="n">roc_auc_score</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">objective</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>Override the <cite>fit</cite> method</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> calls the fit method to train the model.</p></li>
+<li><p>The parameters must include training feature <cite>dataset</cite>, which is designed in the interface.</p></li>
+<li><p>The parameters could include some <cite>optional</cite> parameters with default values, such as <cite>num_boost_round = 1000</cite> for <cite>GBDT</cite>.</p></li>
+<li><p>Code Example: In the following example, <cite>num_boost_round = 1000</cite> is an optional parameter.</p>
+<blockquote>
+<div><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">DatasetH</span><span class="p">,</span> <span class="n">num_boost_round</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+    <span class="c1"># prepare dataset for lgb training and evaluation</span>
+    <span class="n">df_train</span><span class="p">,</span> <span class="n">df_valid</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
+        <span class="p">[</span><span class="s2">"train"</span><span class="p">,</span> <span class="s2">"valid"</span><span class="p">],</span> <span class="n">col_set</span><span class="o">=</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">],</span> <span class="n">data_key</span><span class="o">=</span><span class="n">DataHandlerLP</span><span class="o">.</span><span class="n">DK_L</span>
+    <span class="p">)</span>
+    <span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span> <span class="o">=</span> <span class="n">df_train</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">],</span> <span class="n">df_train</span><span class="p">[</span><span class="s2">"label"</span><span class="p">]</span>
+    <span class="n">x_valid</span><span class="p">,</span> <span class="n">y_valid</span> <span class="o">=</span> <span class="n">df_valid</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">],</span> <span class="n">df_valid</span><span class="p">[</span><span class="s2">"label"</span><span class="p">]</span>
+
+    <span class="c1"># Lightgbm need 1D array as its label</span>
+    <span class="k">if</span> <span class="n">y_train</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">y_train</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">y_train</span><span class="p">,</span> <span class="n">y_valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">values</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">y_valid</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"LightGBM doesn't support multi-label training"</span><span class="p">)</span>
+
+    <span class="n">dtrain</span> <span class="o">=</span> <span class="n">lgb</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">x_train</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">y_train</span><span class="p">)</span>
+    <span class="n">dvalid</span> <span class="o">=</span> <span class="n">lgb</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">x_valid</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">y_valid</span><span class="p">)</span>
+
+    <span class="c1"># fit the model</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">lgb</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+        <span class="n">dtrain</span><span class="p">,</span>
+        <span class="n">num_boost_round</span><span class="o">=</span><span class="n">num_boost_round</span><span class="p">,</span>
+        <span class="n">valid_sets</span><span class="o">=</span><span class="p">[</span><span class="n">dtrain</span><span class="p">,</span> <span class="n">dvalid</span><span class="p">],</span>
+        <span class="n">valid_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"train"</span><span class="p">,</span> <span class="s2">"valid"</span><span class="p">],</span>
+        <span class="n">early_stopping_rounds</span><span class="o">=</span><span class="n">early_stopping_rounds</span><span class="p">,</span>
+        <span class="n">verbose_eval</span><span class="o">=</span><span class="n">verbose_eval</span><span class="p">,</span>
+        <span class="n">evals_result</span><span class="o">=</span><span class="n">evals_result</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>Override the <cite>predict</cite> method</dt><dd><ul>
+<li><p>The parameters must include the parameter <cite>dataset</cite>, which will be userd to get the test dataset.</p></li>
+<li><p>Return the <cite>prediction score</cite>.</p></li>
+<li><p>Please refer to <a class="reference external" href="../reference/api.html#module-qlib.model.base">Model API</a> for the parameter types of the fit method.</p></li>
+<li><p>Code Example: In the following example, users need to use <cite>LightGBM</cite> to predict the label(such as <cite>preds</cite>) of test data <cite>x_test</cite> and return it.</p>
+<blockquote>
+<div><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">DatasetH</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">-&gt;</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"model is not fitted yet!"</span><span class="p">)</span>
+    <span class="n">x_test</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="s2">"test"</span><span class="p">,</span> <span class="n">col_set</span><span class="o">=</span><span class="s2">"feature"</span><span class="p">,</span> <span class="n">data_key</span><span class="o">=</span><span class="n">DataHandlerLP</span><span class="o">.</span><span class="n">DK_I</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x_test</span><span class="o">.</span><span class="n">values</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">x_test</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>Override the <cite>finetune</cite> method (Optional)</dt><dd><ul>
+<li><p>This method is optional to the users. When users want to use this method on their own models, they should inherit the <code class="docutils literal notranslate"><span class="pre">ModelFT</span></code> base class, which includes the interface of <cite>finetune</cite>.</p></li>
+<li><p>The parameters must include the parameter <cite>dataset</cite>.</p></li>
+<li><p>Code Example: In the following example, users will use <cite>LightGBM</cite> as the model and finetune it.</p>
+<blockquote>
+<div><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">finetune</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">DatasetH</span><span class="p">,</span> <span class="n">num_boost_round</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">verbose_eval</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="c1"># Based on existing model and finetune by train more rounds</span>
+    <span class="n">dtrain</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_data</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">lgb</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+        <span class="n">dtrain</span><span class="p">,</span>
+        <span class="n">num_boost_round</span><span class="o">=</span><span class="n">num_boost_round</span><span class="p">,</span>
+        <span class="n">init_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+        <span class="n">valid_sets</span><span class="o">=</span><span class="p">[</span><span class="n">dtrain</span><span class="p">],</span>
+        <span class="n">valid_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"train"</span><span class="p">],</span>
+        <span class="n">verbose_eval</span><span class="o">=</span><span class="n">verbose_eval</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="configuration-file">
+<h2>Configuration File<a class="headerlink" href="#configuration-file" title="Permalink to this heading"></a></h2>
+<p>The configuration file is described in detail in the <a class="reference external" href="../component/workflow.html#complete-example">Workflow</a> document. In order to integrate the custom model into <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, users need to modify the “model” field in the configuration file. The configuration describes which models to use and how we can initialize it.</p>
+<ul>
+<li><p>Example: The following example describes the <cite>model</cite> field of configuration file about the custom lightgbm model mentioned above, where <cite>module_path</cite> is the module path, <cite>class</cite> is the class name, and <cite>args</cite> is the hyperparameter passed into the __init__ method. All parameters in the field is passed to <cite>self._params</cite> by <cite>**kwargs</cite> in <cite>__init__</cite> except <cite>loss = mse</cite>.</p>
+<blockquote>
+<div><div class="highlight-YAML notranslate"><div class="highlight"><pre><span></span><span class="nt">model</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LGBModel</span>
+<span class="w">    </span><span class="nt">module_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qlib.contrib.model.gbdt</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mse</span>
+<span class="w">        </span><span class="nt">colsample_bytree</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8879</span>
+<span class="w">        </span><span class="nt">learning_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0421</span>
+<span class="w">        </span><span class="nt">subsample</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8789</span>
+<span class="w">        </span><span class="nt">lambda_l1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">205.6999</span>
+<span class="w">        </span><span class="nt">lambda_l2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">580.9768</span>
+<span class="w">        </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="w">        </span><span class="nt">num_leaves</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">210</span>
+<span class="w">        </span><span class="nt">num_threads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+<p>Users could find configuration file of the baselines of the <code class="docutils literal notranslate"><span class="pre">Model</span></code> in <code class="docutils literal notranslate"><span class="pre">examples/benchmarks</span></code>. All the configurations of different models are listed under the corresponding model folder.</p>
+</section>
+<section id="model-testing">
+<h2>Model Testing<a class="headerlink" href="#model-testing" title="Permalink to this heading"></a></h2>
+<p>Assuming that the configuration file is <code class="docutils literal notranslate"><span class="pre">examples/benchmarks/LightGBM/workflow_config_lightgbm.yaml</span></code>, users can run the following command to test the custom model:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>examples<span class="w">  </span><span class="c1"># Avoid running program under the directory contains `qlib`</span>
+qrun<span class="w"> </span>benchmarks/LightGBM/workflow_config_lightgbm.yaml
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">qrun</span></code> is a built-in command of <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>.</p>
+</div>
+<p>Also, <code class="docutils literal notranslate"><span class="pre">Model</span></code> can also be tested as a single module. An example has been given in <code class="docutils literal notranslate"><span class="pre">examples/workflow_by_code.ipynb</span></code>.</p>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this heading"></a></h2>
+<p>To know more about <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code>, please refer to <a class="reference external" href="../component/model.html">Forecast Model: Model Training &amp; Prediction</a> and <a class="reference external" href="../reference/api.html#module-qlib.model.base">Model API</a>.</p>
+</section>
+</section>
+</div>
+</body>
+</html>

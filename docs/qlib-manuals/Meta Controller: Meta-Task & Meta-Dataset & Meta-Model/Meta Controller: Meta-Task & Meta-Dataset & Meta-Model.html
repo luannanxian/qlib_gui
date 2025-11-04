@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="meta-controller-meta-task-meta-dataset-meta-model">
+<span id="meta"></span><h1>Meta Controller: Meta-Task &amp; Meta-Dataset &amp; Meta-Model<a class="headerlink" href="#meta-controller-meta-task-meta-dataset-meta-model" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Meta</span> <span class="pre">Controller</span></code> provides guidance to <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code>, which aims to learn regular patterns among a series of forecasting tasks and use learned patterns to guide forthcoming forecasting tasks. Users can implement their own meta-model instance based on <code class="docutils literal notranslate"><span class="pre">Meta</span> <span class="pre">Controller</span></code> module.</p>
+</section>
+<section id="meta-task">
+<h2>Meta Task<a class="headerlink" href="#meta-task" title="Permalink to this heading"></a></h2>
+<p>A <cite>Meta Task</cite> instance is the basic element in the meta-learning framework. It saves the data that can be used for the <cite>Meta Model</cite>. Multiple <cite>Meta Task</cite> instances may share the same <cite>Data Handler</cite>, controlled by <cite>Meta Dataset</cite>. Users should use <cite>prepare_task_data()</cite> to obtain the data that can be directly fed into the <cite>Meta Model</cite>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="qlib.model.meta.task.MetaTask">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.model.meta.task.</span></span><span class="sig-name descname"><span class="pre">MetaTask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meta_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'full'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.task.MetaTask" title="Permalink to this definition"></a></dt>
+<dd><p>A single meta-task, a meta-dataset contains a list of them.
+It serves as a component as in MetaDatasetDS</p>
+<p>The data processing is different</p>
+<ul>
+<li><p>the processed input may be different between training and testing</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>When training, the X, y, X_test, y_test in training tasks are necessary (# PROC_MODE_FULL #)
+but not necessary in test tasks. (# PROC_MODE_TEST #)</p></li>
+<li><p>When the meta model can be transferred into other dataset, only meta_info is necessary  (# PROC_MODE_TRANSFER #)</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.task.MetaTask.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meta_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'full'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.task.MetaTask.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>The <cite>__init__</cite> func is responsible for</p>
+<ul class="simple">
+<li><p>store the task</p></li>
+<li><p>store the origin input data for</p></li>
+<li><p>process the input data for meta data</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<em>dict</em>) – the task to be enhanced by meta model</p></li>
+<li><p><strong>meta_info</strong> (<em>object</em>) – the input for meta model</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.task.MetaTask.get_meta_input">
+<span class="sig-name descname"><span class="pre">get_meta_input</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">object</span></span></span><a class="headerlink" href="#qlib.model.meta.task.MetaTask.get_meta_input" title="Permalink to this definition"></a></dt>
+<dd><p>Return the <strong>processed</strong> meta_info</p>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="meta-dataset">
+<h2>Meta Dataset<a class="headerlink" href="#meta-dataset" title="Permalink to this heading"></a></h2>
+<p><cite>Meta Dataset</cite> controls the meta-information generating process. It is on the duty of providing data for training the <cite>Meta Model</cite>. Users should use <cite>prepare_tasks</cite> to retrieve a list of <cite>Meta Task</cite> instances.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="qlib.model.meta.dataset.MetaTaskDataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.model.meta.dataset.</span></span><span class="sig-name descname"><span class="pre">MetaTaskDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.dataset.MetaTaskDataset" title="Permalink to this definition"></a></dt>
+<dd><p>A dataset fetching the data in a meta-level.</p>
+<p>A Meta Dataset is responsible for</p>
+<ul>
+<li><p>input tasks(e.g. Qlib tasks) and prepare meta tasks</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>meta task contains more information than normal tasks (e.g. input data for meta model)</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>The learnt pattern could transfer to other meta dataset. The following cases should be supported</p>
+<ul>
+<li><p>A meta-model trained on meta-dataset A and then applied to meta-dataset B</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Some pattern are shared between meta-dataset A and B, so meta-input on meta-dataset A are used when meta model are applied on meta-dataset-B</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.dataset.MetaTaskDataset.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.dataset.MetaTaskDataset.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>The meta-dataset maintains a list of meta-tasks when it is initialized.</p>
+<p>The segments indicates the way to divide the data</p>
+<p>The duty of the <cite>__init__</cite> function of MetaTaskDataset
+- initialize the tasks</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.dataset.MetaTaskDataset.prepare_tasks">
+<span class="sig-name descname"><span class="pre">prepare_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qlib.model.meta.task.MetaTask" title="qlib.model.meta.task.MetaTask"><span class="pre">MetaTask</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#qlib.model.meta.dataset.MetaTaskDataset.prepare_tasks" title="Permalink to this definition"></a></dt>
+<dd><p>Prepare the data in each meta-task and ready for training.</p>
+<p>The following code example shows how to retrieve a list of meta-tasks from the <cite>meta_dataset</cite>:</p>
+<blockquote>
+<div><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># get the train segment and the test segment, both of them are lists</span>
+<span class="n">train_meta_tasks</span><span class="p">,</span> <span class="n">test_meta_tasks</span> <span class="o">=</span> <span class="n">meta_dataset</span><span class="o">.</span><span class="n">prepare_tasks</span><span class="p">([</span><span class="s2">"train"</span><span class="p">,</span> <span class="s2">"test"</span><span class="p">])</span>
+</pre></div>
+</div>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>segments</strong> (<em>Union</em><em>[</em><em>List</em><em>[</em><em>Text</em><em>]</em><em>, </em><em>Tuple</em><em>[</em><em>Text</em><em>]</em><em>, </em><em>Text</em><em>]</em>) – the info to select data</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of the prepared data of each meta-task for training the meta-model. For multiple segments [seg1, seg2, … , segN], the returned list will be [[tasks in seg1], [tasks in seg2], … , [tasks in segN]].
+Each task is a meta task</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="meta-model">
+<h2>Meta Model<a class="headerlink" href="#meta-model" title="Permalink to this heading"></a></h2>
+<section id="general-meta-model">
+<h3>General Meta Model<a class="headerlink" href="#general-meta-model" title="Permalink to this heading"></a></h3>
+<p><cite>Meta Model</cite> instance is the part that controls the workflow. The usage of the <cite>Meta Model</cite> includes:
+1. Users train their <cite>Meta Model</cite> with the <cite>fit</cite> function.
+2. The <cite>Meta Model</cite> instance guides the workflow by giving useful information via the <cite>inference</cite> function.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.model.meta.model.</span></span><span class="sig-name descname"><span class="pre">MetaModel</span></span><a class="headerlink" href="#qlib.model.meta.model.MetaModel" title="Permalink to this definition"></a></dt>
+<dd><p>The meta-model guiding the model learning.</p>
+<p>The word <cite>Guiding</cite> can be categorized into two types based on the stage of model learning
+- The definition of learning tasks:  Please refer to docs of <cite>MetaTaskModel</cite>
+- Controlling the learning process of models: Please refer to the docs of <cite>MetaGuideModel</cite></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaModel.fit">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.model.MetaModel.fit" title="Permalink to this definition"></a></dt>
+<dd><p>The training process of the meta-model.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaModel.inference">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">inference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">object</span></span></span><a class="headerlink" href="#qlib.model.meta.model.MetaModel.inference" title="Permalink to this definition"></a></dt>
+<dd><p>The inference process of the meta-model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Some information to guide the model learning</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="meta-task-model">
+<h3>Meta Task Model<a class="headerlink" href="#meta-task-model" title="Permalink to this heading"></a></h3>
+<p>This type of meta-model may interact with task definitions directly. Then, the <cite>Meta Task Model</cite> is the class for them to inherit from. They guide the base tasks by modifying the base task definitions. The function <cite>prepare_tasks</cite> can be used to obtain the modified base task definitions.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaTaskModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.model.meta.model.</span></span><span class="sig-name descname"><span class="pre">MetaTaskModel</span></span><a class="headerlink" href="#qlib.model.meta.model.MetaTaskModel" title="Permalink to this definition"></a></dt>
+<dd><p>This type of meta-model deals with base task definitions. The meta-model creates tasks for training new base forecasting models after it is trained. <cite>prepare_tasks</cite> directly modifies the task definitions.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaTaskModel.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meta_dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qlib.model.meta.dataset.MetaTaskDataset" title="qlib.model.meta.dataset.MetaTaskDataset"><span class="pre">MetaTaskDataset</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.model.MetaTaskModel.fit" title="Permalink to this definition"></a></dt>
+<dd><p>The MetaTaskModel is expected to get prepared MetaTask from meta_dataset.
+And then it will learn knowledge from the meta tasks</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaTaskModel.inference">
+<span class="sig-name descname"><span class="pre">inference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meta_dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qlib.model.meta.dataset.MetaTaskDataset" title="qlib.model.meta.dataset.MetaTaskDataset"><span class="pre">MetaTaskDataset</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#qlib.model.meta.model.MetaTaskModel.inference" title="Permalink to this definition"></a></dt>
+<dd><p>MetaTaskModel will make inference on the meta_dataset
+The MetaTaskModel is expected to get prepared MetaTask from meta_dataset.
+Then it will create modified task with Qlib format which can be executed by Qlib trainer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of modified task definitions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[dict]</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="meta-guide-model">
+<h3>Meta Guide Model<a class="headerlink" href="#meta-guide-model" title="Permalink to this heading"></a></h3>
+<p>This type of meta-model participates in the training process of the base forecasting model. The meta-model may guide the base forecasting models during their training to improve their performances.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaGuideModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.model.meta.model.</span></span><span class="sig-name descname"><span class="pre">MetaGuideModel</span></span><a class="headerlink" href="#qlib.model.meta.model.MetaGuideModel" title="Permalink to this definition"></a></dt>
+<dd><p>This type of meta-model aims to guide the training process of the base model. The meta-model interacts with the base forecasting models during their training process.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaGuideModel.fit">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.model.MetaGuideModel.fit" title="Permalink to this definition"></a></dt>
+<dd><p>The training process of the meta-model.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qlib.model.meta.model.MetaGuideModel.inference">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">inference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#qlib.model.meta.model.MetaGuideModel.inference" title="Permalink to this definition"></a></dt>
+<dd><p>The inference process of the meta-model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Some information to guide the model learning</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides an implementation of <code class="docutils literal notranslate"><span class="pre">Meta</span> <span class="pre">Model</span></code> module, <code class="docutils literal notranslate"><span class="pre">DDG-DA</span></code>,
+which adapts to the market dynamics.</p>
+<p><code class="docutils literal notranslate"><span class="pre">DDG-DA</span></code> includes four steps:</p>
+<ol class="arabic simple">
+<li><p>Calculate meta-information and encapsulate it into <code class="docutils literal notranslate"><span class="pre">Meta</span> <span class="pre">Task</span></code> instances. All the meta-tasks form a <code class="docutils literal notranslate"><span class="pre">Meta</span> <span class="pre">Dataset</span></code> instance.</p></li>
+<li><p>Train <code class="docutils literal notranslate"><span class="pre">DDG-DA</span></code> based on the training data of the meta-dataset.</p></li>
+<li><p>Do the inference of the <code class="docutils literal notranslate"><span class="pre">DDG-DA</span></code> to get guide information.</p></li>
+<li><p>Apply guide information to the forecasting models to improve their performances.</p></li>
+</ol>
+<p>The <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/examples/benchmarks_dynamic/DDG-DA">above example</a> can be found in <code class="docutils literal notranslate"><span class="pre">examples/benchmarks_dynamic/DDG-DA/workflow.py</span></code>.</p>
+</section>
+</section>
+</div>
+</body>
+</html>

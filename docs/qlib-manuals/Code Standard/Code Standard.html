@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="code-standard">
+<span id="id1"></span><h1>Code Standard<a class="headerlink" href="#code-standard" title="Permalink to this heading"></a></h1>
+<section id="docstring">
+<h2>Docstring<a class="headerlink" href="#docstring" title="Permalink to this heading"></a></h2>
+<p>Please use the <a class="reference external" href="https://stackoverflow.com/a/24385103">Numpydoc Style</a>.</p>
+</section>
+<section id="continuous-integration">
+<h2>Continuous Integration<a class="headerlink" href="#continuous-integration" title="Permalink to this heading"></a></h2>
+<p>Continuous Integration (CI) tools help you stick to the quality standards by running tests every time you push a new commit and reporting the results to a pull request.</p>
+<p>When you submit a PR request, you can check whether your code passes the CI tests in the “check” section at the bottom of the web page.</p>
+<ol class="arabic">
+<li><p>Qlib will check the code format with black. The PR will raise error if your code does not align to the standard of Qlib(e.g. a common error is the mixed use of space and tab).</p>
+<p>You can fix the bug by inputting the following code in the command line.</p>
+</li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>black
+python<span class="w"> </span>-m<span class="w"> </span>black<span class="w"> </span>.<span class="w"> </span>-l<span class="w"> </span><span class="m">120</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Qlib will check your code style pylint. The checking command is implemented in [github action workflow](<a class="reference external" href="https://github.com/microsoft/qlib/blob/0e8b94a552f1c457cfa6cd2c1bb3b87ebb3fb279/.github/workflows/test.yml#L66">https://github.com/microsoft/qlib/blob/0e8b94a552f1c457cfa6cd2c1bb3b87ebb3fb279/.github/workflows/test.yml#L66</a>).
+Sometime pylint’s restrictions are not that reasonable. You can ignore specific errors like this</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">return</span> <span class="o">-</span><span class="n">ICLoss</span><span class="p">()(</span><span class="n">pred</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>  <span class="c1"># pylint: disable=E1130</span>
+</pre></div>
+</div>
+<ol class="arabic" start="3">
+<li><p>Qlib will check your code style flake8. The checking command is implemented in [github action workflow](<a class="reference external" href="https://github.com/microsoft/qlib/blob/0e8b94a552f1c457cfa6cd2c1bb3b87ebb3fb279/.github/workflows/test.yml#L73">https://github.com/microsoft/qlib/blob/0e8b94a552f1c457cfa6cd2c1bb3b87ebb3fb279/.github/workflows/test.yml#L73</a>).</p>
+<p>You can fix the bug by inputing the following code in the command line.</p>
+</li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>flake8<span class="w"> </span>--ignore<span class="w"> </span>E501,F541,E402,F401,W503,E741,E266,E203,E302,E731,E262,F523,F821,F811,F841,E713,E265,W291,E712,E722,W293<span class="w"> </span>qlib
+</pre></div>
+</div>
+<ol class="arabic" start="4">
+<li><p>Qlib has integrated pre-commit, which will make it easier for developers to format their code.</p>
+<p>Just run the following two commands, and the code will be automatically formatted using black and flake8 when the git commit command is executed.</p>
+</li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev<span class="o">]</span>
+pre-commit<span class="w"> </span>install
+</pre></div>
+</div>
+</section>
+</section>
+<section id="development-guidance">
+<h1>Development Guidance<a class="headerlink" href="#development-guidance" title="Permalink to this heading"></a></h1>
+<p>As a developer, you often want make changes to <cite>Qlib</cite> and hope it would reflect directly in your environment without reinstalling it. You can install <cite>Qlib</cite> in editable mode with following command.
+The <cite>[dev]</cite> option will help you to install some related packages when developing <cite>Qlib</cite> (e.g. pytest, sphinx)</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[dev]"</span>
+</pre></div>
+</div>
+</section>
+</div>
+</body>
+</html>

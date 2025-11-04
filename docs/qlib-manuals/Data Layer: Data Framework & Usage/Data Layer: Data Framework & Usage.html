@@ -1,0 +1,1145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="data-layer-data-framework-usage">
+<span id="data"></span><h1>Data Layer: Data Framework &amp; Usage<a class="headerlink" href="#data-layer-data-framework-usage" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Layer</span></code> provides user-friendly APIs to manage and retrieve data. It provides high-performance data infrastructure.</p>
+<p>It is designed for quantitative investment. For example, users could build formulaic alphas with <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Layer</span></code> easily. Please refer to <a class="reference external" href="../advanced/alpha.html">Building Formulaic Alphas</a> for more details.</p>
+<p>The introduction of <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Layer</span></code> includes the following parts.</p>
+<ul class="simple">
+<li><p>Data Preparation</p></li>
+<li><p>Data API</p></li>
+<li><p>Data Loader</p></li>
+<li><p>Data Handler</p></li>
+<li><p>Dataset</p></li>
+<li><p>Cache</p></li>
+<li><p>Data and Cache File Structure</p></li>
+</ul>
+<p>Here is a typical example of Qlib data workflow</p>
+<ul class="simple">
+<li><p>Users download data and converting data into Qlib format(with filename suffix <cite>.bin</cite>).  In this step, typically only some basic data are stored on disk(such as OHLCV).</p></li>
+<li><p>Creating some basic features based on Qlib’s expression Engine(e.g. “Ref($close, 60) / $close”, the return of last 60 trading days). Supported operators in the expression engine can be found <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/data/ops.py">here</a>. This step is typically implemented in Qlib’s <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/data.html#data-loader">Data Loader</a> which is a component of <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/data.html#data-handler">Data Handler</a> .</p></li>
+<li><p>If users require more complicated data processing (e.g. data normalization),  <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/data.html#data-handler">Data Handler</a> support user-customized processors to process data(some predefined processors can be found <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/data/dataset/processor.py">here</a>).  The processors are different from operators in expression engine. It is designed for some complicated data processing methods which is hard to supported in operators in expression engine.</p></li>
+<li><p>At last, <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/data.html#dataset">Dataset</a> is responsible to prepare model-specific dataset from the processed data of Data Handler</p></li>
+</ul>
+</section>
+<section id="data-preparation">
+<h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this heading"></a></h2>
+<section id="qlib-format-data">
+<h3>Qlib Format Data<a class="headerlink" href="#qlib-format-data" title="Permalink to this heading"></a></h3>
+<p>We’ve specially designed a data structure to manage financial data, please refer to the <a class="reference external" href="https://arxiv.org/abs/2009.11189">File storage design section in Qlib paper</a> for detailed information.
+Such data will be stored with filename suffix <cite>.bin</cite> (We’ll call them <cite>.bin</cite> file, <cite>.bin</cite> format, or qlib format). <cite>.bin</cite> file is designed for scientific computing on finance data.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides two different off-the-shelf datasets, which can be accessed through this <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/handler.py">link</a>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Dataset</p></th>
+<th class="head"><p>US Market</p></th>
+<th class="head"><p>China Market</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Alpha360</p></td>
+<td><p>√</p></td>
+<td><p>√</p></td>
+</tr>
+<tr class="row-odd"><td><p>Alpha158</p></td>
+<td><p>√</p></td>
+<td><p>√</p></td>
+</tr>
+</tbody>
+</table>
+<p>Also, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a high-frequency dataset. Users can run a high-frequency dataset example through this <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/examples/highfreq">link</a>.</p>
+</section>
+<section id="qlib-format-dataset">
+<h3>Qlib Format Dataset<a class="headerlink" href="#qlib-format-dataset" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> has provided an off-the-shelf dataset in <cite>.bin</cite> format, users could use the script <code class="docutils literal notranslate"><span class="pre">scripts/get_data.py</span></code> to download the China-Stock dataset as follows. User can also use numpy to load <cite>.bin</cite> file to validate data.
+The price volume data look different from the actual dealing price because of they are <strong>adjusted</strong> (<a class="reference external" href="https://www.investopedia.com/terms/a/adjusted_closing_price.asp">adjusted price</a>).  And then you may find that the adjusted price may be different from different data sources. This is because different data sources may vary in the way of adjusting prices. Qlib normalize the price on first trading day of each stock to 1 when adjusting them.
+Users can leverage <cite>$factor</cite> to get the original trading price (e.g. <cite>$close / $factor</cite> to get the original close price).</p>
+<p>Here are some discussions about the price adjusting of Qlib.</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/microsoft/qlib/issues/991#issuecomment-1075252402">https://github.com/microsoft/qlib/issues/991#issuecomment-1075252402</a></p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># download 1d</span>
+python<span class="w"> </span>scripts/get_data.py<span class="w"> </span>qlib_data<span class="w"> </span>--target_dir<span class="w"> </span>~/.qlib/qlib_data/cn_data<span class="w"> </span>--region<span class="w"> </span>cn
+
+<span class="c1"># download 1min</span>
+python<span class="w"> </span>scripts/get_data.py<span class="w"> </span>qlib_data<span class="w"> </span>--target_dir<span class="w"> </span>~/.qlib/qlib_data/qlib_cn_1min<span class="w"> </span>--region<span class="w"> </span>cn<span class="w"> </span>--interval<span class="w"> </span>1min
+</pre></div>
+</div>
+<p>In addition to China-Stock data, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> also includes a US-Stock dataset, which can be downloaded with the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/get_data.py<span class="w"> </span>qlib_data<span class="w"> </span>--target_dir<span class="w"> </span>~/.qlib/qlib_data/us_data<span class="w"> </span>--region<span class="w"> </span>us
+</pre></div>
+</div>
+<p>After running the above command, users can find china-stock and us-stock data in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> format in the <code class="docutils literal notranslate"><span class="pre">~/.qlib/qlib_data/cn_data</span></code> directory and <code class="docutils literal notranslate"><span class="pre">~/.qlib/qlib_data/us_data</span></code> directory respectively.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> also provides the scripts in <code class="docutils literal notranslate"><span class="pre">scripts/data_collector</span></code> to help users crawl the latest data on the Internet and convert it to qlib format.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is initialized with this dataset, users could build and evaluate their own models with it.  Please refer to <a class="reference external" href="../start/initialization.html">Initialization</a> for more details.</p>
+</section>
+<section id="automatic-update-of-daily-frequency-data">
+<h3>Automatic update of daily frequency data<a class="headerlink" href="#automatic-update-of-daily-frequency-data" title="Permalink to this heading"></a></h3>
+<blockquote>
+<div><p><strong>It is recommended that users update the data manually once (--trading_date 2021-05-25) and then set it to update automatically.</strong></p>
+<p>For more information refer to: <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/scripts/data_collector/yahoo#Automatic-update-of-daily-frequency-data">yahoo collector</a></p>
+<ul>
+<li><dl>
+<dt>Automatic update of data to the “qlib” directory each trading day(Linux)</dt><dd><ul>
+<li><p>use <em>crontab</em>: <cite>crontab -e</cite></p></li>
+<li><p>set up timed tasks:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>*<span class="w"> </span>*<span class="w"> </span>*<span class="w"> </span>*<span class="w"> </span><span class="m">1</span>-5<span class="w"> </span>python<span class="w"> </span>&lt;script<span class="w"> </span>path&gt;<span class="w"> </span>update_data_to_bin<span class="w"> </span>--qlib_data_1d_dir<span class="w"> </span>&lt;user<span class="w"> </span>data<span class="w"> </span>dir&gt;
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>script path</strong>: <em>scripts/data_collector/yahoo/collector.py</em></p></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Manual update of data</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/data_collector/yahoo/collector.py<span class="w"> </span>update_data_to_bin<span class="w"> </span>--qlib_data_1d_dir<span class="w"> </span>&lt;user<span class="w"> </span>data<span class="w"> </span>dir&gt;<span class="w"> </span>--trading_date<span class="w"> </span>&lt;start<span class="w"> </span>date&gt;<span class="w"> </span>--end_date<span class="w"> </span>&lt;end<span class="w"> </span>date&gt;
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><em>trading_date</em>: start of trading day</p></li>
+<li><p><em>end_date</em>: end of trading day(not included)</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</section>
+<section id="converting-csv-format-into-qlib-format">
+<h3>Converting CSV Format into Qlib Format<a class="headerlink" href="#converting-csv-format-into-qlib-format" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> has provided the script <code class="docutils literal notranslate"><span class="pre">scripts/dump_bin.py</span></code> to convert <strong>any</strong> data in CSV format into <cite>.bin</cite> files (<code class="docutils literal notranslate"><span class="pre">Qlib</span></code> format) as long as they are in the correct format.</p>
+<p>Besides downloading the prepared demo data, users could download demo data directly from the Collector as follows for reference to the CSV format.
+Here are some example:</p>
+<dl>
+<dt>for daily data:</dt><dd><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/get_data.py<span class="w"> </span>download_data<span class="w"> </span>--file_name<span class="w"> </span>csv_data_cn.zip<span class="w"> </span>--target_dir<span class="w"> </span>~/.qlib/csv_data/cn_data
+</pre></div>
+</div>
+</dd>
+<dt>for 1min data:</dt><dd><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/data_collector/yahoo/collector.py<span class="w"> </span>download_data<span class="w"> </span>--source_dir<span class="w"> </span>~/.qlib/stock_data/source/cn_1min<span class="w"> </span>--region<span class="w"> </span>CN<span class="w"> </span>--start<span class="w"> </span><span class="m">2021</span>-05-20<span class="w"> </span>--end<span class="w"> </span><span class="m">2021</span>-05-23<span class="w"> </span>--delay<span class="w"> </span><span class="m">0</span>.1<span class="w"> </span>--interval<span class="w"> </span>1min<span class="w"> </span>--limit_nums<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<p>Users can also provide their own data in CSV format. However, the CSV data <strong>must satisfies</strong> following criterions:</p>
+<ul>
+<li><p>CSV file is named after a specific stock <em>or</em> the CSV file includes a column of the stock name</p>
+<blockquote>
+<div><ul>
+<li><p>Name the CSV file after a stock: <cite>SH600000.csv</cite>, <cite>AAPL.csv</cite> (not case sensitive).</p></li>
+<li><p>CSV file includes a column of the stock name. User <strong>must</strong> specify the column name when dumping the data. Here is an example:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/dump_bin.py<span class="w"> </span>dump_all<span class="w"> </span>...<span class="w"> </span>--symbol_field_name<span class="w"> </span>symbol
+</pre></div>
+</div>
+<p>where the data are in the following format:</p>
+<blockquote>
+<div><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>symbol</p></th>
+<th class="head"><p>close</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SH600000</p></td>
+<td><p>120</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>CSV file <strong>must</strong> include a column for the date, and when dumping the data, user must specify the date column name. Here is an example:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/dump_bin.py<span class="w"> </span>dump_all<span class="w"> </span>...<span class="w"> </span>--date_field_name<span class="w"> </span>date
+</pre></div>
+</div>
+<p>where the data are in the following format:</p>
+<blockquote>
+<div><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>symbol</p></th>
+<th class="head"><p>date</p></th>
+<th class="head"><p>close</p></th>
+<th class="head"><p>open</p></th>
+<th class="head"><p>volume</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SH600000</p></td>
+<td><p>2020-11-01</p></td>
+<td><p>120</p></td>
+<td><p>121</p></td>
+<td><p>12300000</p></td>
+</tr>
+<tr class="row-odd"><td><p>SH600000</p></td>
+<td><p>2020-11-02</p></td>
+<td><p>123</p></td>
+<td><p>120</p></td>
+<td><p>12300000</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div></blockquote>
+</li>
+</ul>
+<p>Supposed that users prepare their CSV format data in the directory <code class="docutils literal notranslate"><span class="pre">~/.qlib/csv_data/my_data</span></code>, they can run the following command to start the conversion.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/dump_bin.py<span class="w"> </span>dump_all<span class="w"> </span>--csv_path<span class="w">  </span>~/.qlib/csv_data/my_data<span class="w"> </span>--qlib_dir<span class="w"> </span>~/.qlib/qlib_data/my_data<span class="w"> </span>--include_fields<span class="w"> </span>open,close,high,low,volume,factor
+</pre></div>
+</div>
+<p>For other supported parameters when dumping the data into <cite>.bin</cite> file, users can refer to the information by running the following commands:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>dump_bin.py<span class="w"> </span>dump_all<span class="w"> </span>--help
+</pre></div>
+</div>
+<p>After conversion, users can find their Qlib format data in the directory <cite>~/.qlib/qlib_data/my_data</cite>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The arguments of <cite>–include_fields</cite> should correspond with the column names of CSV files. The columns names of dataset provided by <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> should include open, close, high, low, volume and factor at least.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>open</cite></dt><dd><p>The adjusted opening price</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>close</cite></dt><dd><p>The adjusted closing price</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>high</cite></dt><dd><p>The adjusted highest price</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>low</cite></dt><dd><p>The adjusted lowest price</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>volume</cite></dt><dd><p>The adjusted trading volume</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>factor</cite></dt><dd><p>The Restoration factor. Normally, <code class="docutils literal notranslate"><span class="pre">factor</span> <span class="pre">=</span> <span class="pre">adjusted_price</span> <span class="pre">/</span> <span class="pre">original_price</span></code>, <cite>adjusted price</cite> reference: <a class="reference external" href="https://www.investopedia.com/terms/s/splitadjusted.asp">split adjusted</a></p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>In the convention of <cite>Qlib</cite> data processing, <cite>open, close, high, low, volume, money and factor</cite> will be set to NaN if the stock is suspended.
+If you want to use your own alpha-factor which can’t be calculate by OCHLV, like PE, EPS and so on, you could add it to the CSV files with OHCLV together and then dump it to the Qlib format data.</p>
+</div>
+</section>
+<section id="checking-the-health-of-the-data">
+<h3>Checking the health of the data<a class="headerlink" href="#checking-the-health-of-the-data" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a script to check the health of the data.</p>
+<ul>
+<li><p>The main points to check are as follows</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Check if any data is missing in the DataFrame.</p></li>
+<li><p>Check if there are any large step changes above the threshold in the OHLCV columns.</p></li>
+<li><p>Check if any of the required columns (OLHCV) are missing in the DataFrame.</p></li>
+<li><p>Check if the ‘factor’ column is missing in the DataFrame.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>You can run the following commands to check whether the data is healthy or not.</p>
+<blockquote>
+<div><dl>
+<dt>for daily data:</dt><dd><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/check_data_health.py<span class="w"> </span>check_data<span class="w"> </span>--qlib_dir<span class="w"> </span>~/.qlib/qlib_data/cn_data
+</pre></div>
+</div>
+</dd>
+<dt>for 1min data:</dt><dd><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/check_data_health.py<span class="w"> </span>check_data<span class="w"> </span>--qlib_dir<span class="w"> </span>~/.qlib/qlib_data/cn_data_1min<span class="w"> </span>--freq<span class="w"> </span>1min
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+</li>
+<li><p>Of course, you can also add some parameters to adjust the test results.</p>
+<blockquote>
+<div><ul>
+<li><p>The available parameters are these.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>freq: Frequency of data.</p></li>
+<li><p>large_step_threshold_price: Maximum permitted price change</p></li>
+<li><p>large_step_threshold_volume: Maximum permitted volume change.</p></li>
+<li><p>missing_data_num: Maximum value for which data is allowed to be null.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>You can run the following commands to check whether the data is healthy or not.</p>
+<blockquote>
+<div><dl>
+<dt>for daily data:</dt><dd><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/check_data_health.py<span class="w"> </span>check_data<span class="w"> </span>--qlib_dir<span class="w"> </span>~/.qlib/qlib_data/cn_data<span class="w"> </span>--missing_data_num<span class="w"> </span><span class="m">30055</span><span class="w"> </span>--large_step_threshold_volume<span class="w"> </span><span class="m">94485</span><span class="w"> </span>--large_step_threshold_price<span class="w"> </span><span class="m">20</span>
+</pre></div>
+</div>
+</dd>
+<dt>for 1min data:</dt><dd><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/check_data_health.py<span class="w"> </span>check_data<span class="w"> </span>--qlib_dir<span class="w"> </span>~/.qlib/qlib_data/cn_data<span class="w"> </span>--freq<span class="w"> </span>1min<span class="w"> </span>--missing_data_num<span class="w"> </span><span class="m">35806</span><span class="w"> </span>--large_step_threshold_volume<span class="w"> </span><span class="m">3205452000000</span><span class="w"> </span>--large_step_threshold_price<span class="w"> </span><span class="m">0</span>.91
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="stock-pool-market">
+<h3>Stock Pool (Market)<a class="headerlink" href="#stock-pool-market" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> defines <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml#L4">stock pool</a> as stock list and their date ranges. Predefined stock pools (e.g. csi300) may be imported as follows.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>collector.py<span class="w"> </span>--index_name<span class="w"> </span>CSI300<span class="w"> </span>--qlib_dir<span class="w"> </span>&lt;user<span class="w"> </span>qlib<span class="w"> </span>data<span class="w"> </span>dir&gt;<span class="w"> </span>--method<span class="w"> </span>parse_instruments
+</pre></div>
+</div>
+</section>
+<section id="multiple-stock-modes">
+<h3>Multiple Stock Modes<a class="headerlink" href="#multiple-stock-modes" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> now provides two different stock modes for users: China-Stock Mode &amp; US-Stock Mode. Here are some different settings of these two modes:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Region</p></th>
+<th class="head"><p>Trade Unit</p></th>
+<th class="head"><p>Limit Threshold</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>China</p></td>
+<td><p>100</p></td>
+<td><p>0.099</p></td>
+</tr>
+<tr class="row-odd"><td><p>US</p></td>
+<td><p>1</p></td>
+<td><p>None</p></td>
+</tr>
+</tbody>
+</table>
+<p>The <cite>trade unit</cite> defines the unit number of stocks can be used in a trade, and the <cite>limit threshold</cite> defines the bound set to the percentage of ups and downs of a stock.</p>
+<ul>
+<li><dl>
+<dt>If users use <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> in china-stock mode, china-stock data is required. Users can use <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> in china-stock mode according to the following steps:</dt><dd><ul>
+<li><p>Download china-stock in qlib format, please refer to section <a class="reference external" href="#qlib-format-dataset">Qlib Format Dataset</a>.</p></li>
+<li><dl>
+<dt>Initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> in china-stock mode</dt><dd><p>Supposed that users download their Qlib format data in the directory <code class="docutils literal notranslate"><span class="pre">~/.qlib/qlib_data/cn_data</span></code>. Users only need to initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> as follows.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.constant</span><span class="w"> </span><span class="kn">import</span> <span class="n">REG_CN</span>
+<span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=</span><span class="s1">'~/.qlib/qlib_data/cn_data'</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="n">REG_CN</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>If users use <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> in US-stock mode, US-stock data is required. <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> also provides a script to download US-stock data. Users can use <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> in US-stock mode according to the following steps:</dt><dd><ul>
+<li><p>Download us-stock in qlib format, please refer to section <a class="reference external" href="#qlib-format-dataset">Qlib Format Dataset</a>.</p></li>
+<li><dl>
+<dt>Initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> in US-stock mode</dt><dd><p>Supposed that users prepare their Qlib format data in the directory <code class="docutils literal notranslate"><span class="pre">~/.qlib/qlib_data/us_data</span></code>. Users only need to initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> as follows.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">REG_US</span>
+<span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=</span><span class="s1">'~/.qlib/qlib_data/us_data'</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="n">REG_US</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>PRs for new data source are highly welcome! Users could commit the code to crawl data as a PR like <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/scripts">the examples here</a>. And then we will use the code to create data cache on our server which other users could use directly.</p>
+</div>
+</section>
+</section>
+<section id="data-api">
+<h2>Data API<a class="headerlink" href="#data-api" title="Permalink to this heading"></a></h2>
+<section id="data-retrieval">
+<h3>Data Retrieval<a class="headerlink" href="#data-retrieval" title="Permalink to this heading"></a></h3>
+<p>Users can use APIs in <code class="docutils literal notranslate"><span class="pre">qlib.data</span></code> to retrieve data, please refer to <a class="reference external" href="../start/getdata.html">Data Retrieval</a>.</p>
+</section>
+<section id="feature">
+<h3>Feature<a class="headerlink" href="#feature" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides <cite>Feature</cite> and <cite>ExpressionOps</cite> to fetch the features according to users’ needs.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>Feature</cite></dt><dd><p>Load data from the data provider. User can get the features like <cite>$high</cite>, <cite>$low</cite>, <cite>$open</cite>, <cite>$close</cite>, .etc, which should correspond with the arguments of <cite>–include_fields</cite>, please refer to section <a class="reference external" href="#converting-csv-format-into-qlib-format">Converting CSV Format into Qlib Format</a>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>ExpressionOps</cite></dt><dd><p><cite>ExpressionOps</cite> will use operator for feature construction.
+To know more about  <code class="docutils literal notranslate"><span class="pre">Operator</span></code>, please refer to <a class="reference external" href="../reference/api.html#module-qlib.data.ops">Operator API</a>.
+Also, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> supports users to define their own custom <code class="docutils literal notranslate"><span class="pre">Operator</span></code>, an example has been given in <code class="docutils literal notranslate"><span class="pre">tests/test_register_ops.py</span></code>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>To know more about  <code class="docutils literal notranslate"><span class="pre">Feature</span></code>, please refer to <a class="reference external" href="../reference/api.html#module-qlib.data.base">Feature API</a>.</p>
+</section>
+<section id="filter">
+<h3>Filter<a class="headerlink" href="#filter" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides <cite>NameDFilter</cite> and <cite>ExpressionDFilter</cite> to filter the instruments according to users’ needs.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>NameDFilter</cite></dt><dd><p>Name dynamic instrument filter. Filter the instruments based on a regulated name format. A name rule regular expression is required.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>ExpressionDFilter</cite></dt><dd><p>Expression dynamic instrument filter. Filter the instruments based on a certain expression. An expression rule indicating a certain feature field is required.</p>
+<ul>
+<li><p><cite>basic features filter</cite>: rule_expression = ‘$close/$open&gt;5’</p></li>
+<li><p><cite>cross-sectional features filter</cite> : rule_expression = ‘$rank($close)&lt;10’</p></li>
+<li><p><cite>time-sequence features filter</cite>: rule_expression = ‘$Ref($close, 3)&gt;100’</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Here is a simple example showing how to use filter in a basic <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> workflow configuration file:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;filter</span>
+<span class="w">    </span><span class="nt">filter_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ExpressionDFilter</span>
+<span class="w">    </span><span class="nt">rule_expression</span><span class="p">:</span><span class="w"> </span><span class="s">"Ref($close,</span><span class="nv"> </span><span class="s">-2)</span><span class="nv"> </span><span class="s">/</span><span class="nv"> </span><span class="s">Ref($close,</span><span class="nv"> </span><span class="s">-1)</span><span class="nv"> </span><span class="s">&gt;</span><span class="nv"> </span><span class="s">1"</span>
+<span class="w">    </span><span class="nt">filter_start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2010-01-01</span>
+<span class="w">    </span><span class="nt">filter_end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2010-01-07</span>
+<span class="w">    </span><span class="nt">keep</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">False</span>
+
+<span class="nt">data_handler_config</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;data_handler_config</span>
+<span class="w">    </span><span class="nt">start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2010-01-01</span>
+<span class="w">    </span><span class="nt">end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2021-01-22</span>
+<span class="w">    </span><span class="nt">fit_start_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2010-01-01</span>
+<span class="w">    </span><span class="nt">fit_end_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2015-12-31</span>
+<span class="w">    </span><span class="nt">instruments</span><span class="p">:</span><span class="w"> </span><span class="nv">*market</span>
+<span class="w">    </span><span class="nt">filter_pipe</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">*filter</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>To know more about <code class="docutils literal notranslate"><span class="pre">Filter</span></code>, please refer to <a class="reference external" href="../reference/api.html#module-qlib.data.filter">Filter API</a>.</p>
+</section>
+<section id="reference">
+<h3>Reference<a class="headerlink" href="#reference" title="Permalink to this heading"></a></h3>
+<p>To know more about <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">API</span></code>, please refer to <a class="reference external" href="../reference/api.html#data">Data API</a>.</p>
+</section>
+</section>
+<section id="id7">
+<h2>Data Loader<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Loader</span></code> in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is designed to load raw data from the original data source. It will be loaded and used in the <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> module.</p>
+<section id="qlibdataloader">
+<h3>QlibDataLoader<a class="headerlink" href="#qlibdataloader" title="Permalink to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">QlibDataLoader</span></code> class in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is such an interface that allows users to load raw data from the <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> data source.</p>
+</section>
+<section id="staticdataloader">
+<h3>StaticDataLoader<a class="headerlink" href="#staticdataloader" title="Permalink to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">StaticDataLoader</span></code> class in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is such an interface that allows users to load raw data from file or as provided.</p>
+</section>
+<section id="interface">
+<h3>Interface<a class="headerlink" href="#interface" title="Permalink to this heading"></a></h3>
+<p>Here are some interfaces of the <code class="docutils literal notranslate"><span class="pre">QlibDataLoader</span></code> class:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.data.dataset.loader.</span></span><span class="sig-name descname"><span class="pre">DataLoader</span></span></dt>
+<dd><p>DataLoader is designed for loading raw data from original data source.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instruments</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>load the data as pd.DataFrame.</p>
+<p>Example of the data (The multi-index of the columns is optional.):</p>
+<blockquote>
+<div><div class="highlight-text notranslate"><div class="highlight"><pre><span></span>                        feature                                                             label
+                        $close     $volume     Ref($close, 1)  Mean($close, 3)  $high-$low  LABEL0
+datetime    instrument
+2010-01-04  SH600000    81.807068  17145150.0       83.737389        83.016739    2.741058  0.0032
+            SH600004    13.313329  11800983.0       13.313329        13.317701    0.183632  0.0042
+            SH600005    37.796539  12231662.0       38.258602        37.919757    0.970325  0.0289
+</pre></div>
+</div>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>instruments</strong> (<em>str</em><em> or </em><em>dict</em>) – it can either be the market name or the config file of instruments generated by InstrumentProvider.
+If the value of instruments is None, it means that no filtering is done.</p></li>
+<li><p><strong>start_time</strong> (<em>str</em>) – start of the time range.</p></li>
+<li><p><strong>end_time</strong> (<em>str</em>) – end of the time range.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>data load from the under layer source</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>KeyError:</strong> – if the instruments filter is not supported, raise KeyError</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="api">
+<h3>API<a class="headerlink" href="#api" title="Permalink to this heading"></a></h3>
+<p>To know more about <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Loader</span></code>, please refer to <a class="reference external" href="../reference/api.html#module-qlib.data.dataset.loader">Data Loader API</a>.</p>
+</section>
+</section>
+<section id="id8">
+<h2>Data Handler<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> module in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is designed to handler those common data processing methods which will be used by most of the models.</p>
+<p>Users can use <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> in an automatic workflow by <code class="docutils literal notranslate"><span class="pre">qrun</span></code>, refer to <a class="reference external" href="workflow.html">Workflow: Workflow Management</a> for more details.</p>
+<section id="datahandlerlp">
+<h3>DataHandlerLP<a class="headerlink" href="#datahandlerlp" title="Permalink to this heading"></a></h3>
+<p>In addition to use <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> in an automatic workflow with <code class="docutils literal notranslate"><span class="pre">qrun</span></code>, <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> can be used as an independent module, by which users can easily preprocess data (standardization, remove NaN, etc.) and build datasets.</p>
+<p>In order to achieve so, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a base class <a class="reference external" href="../reference/api.html#qlib.data.dataset.handler.DataHandlerLP">qlib.data.dataset.DataHandlerLP</a>. The core idea of this class is that: we will have some learnable <code class="docutils literal notranslate"><span class="pre">Processors</span></code> which can learn the parameters of data processing(e.g., parameters for zscore normalization). When new data comes in, these <cite>trained</cite> <code class="docutils literal notranslate"><span class="pre">Processors</span></code> can then process the new data and thus processing real-time data in an efficient way becomes possible. More information about <code class="docutils literal notranslate"><span class="pre">Processors</span></code> will be listed in the next subsection.</p>
+</section>
+<section id="id9">
+<h3>Interface<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
+<p>Here are some important interfaces that <code class="docutils literal notranslate"><span class="pre">DataHandlerLP</span></code> provides:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.data.dataset.handler.</span></span><span class="sig-name descname"><span class="pre">DataHandlerLP</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instruments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_loader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../reference/api.html#qlib.data.dataset.loader.DataLoader" title="qlib.data.dataset.loader.DataLoader"><span class="pre">DataLoader</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">infer_processors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learn_processors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shared_processors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">process_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'append'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_raw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>DataHandler with <strong>(L)earnable (P)rocessor</strong></p>
+<p>This handler will produce three pieces of data in pd.DataFrame format.</p>
+<ul class="simple">
+<li><p>DK_R / self._data: the raw data loaded from the loader</p></li>
+<li><p>DK_I / self._infer: the data processed for inference</p></li>
+<li><p>DK_L / self._learn: the data processed for learning model.</p></li>
+</ul>
+<p>The motivation of using different processor workflows for learning and inference
+Here are some examples.</p>
+<ul>
+<li><p>The instrument universe for learning and inference may be different.</p></li>
+<li><p>The processing of some samples may rely on label (for example, some samples hit the limit may need extra processing or be dropped).</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>These processors only apply to the learning phase.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>Tips for data handler</p>
+<ul>
+<li><p>To reduce the memory cost</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>drop_raw=True</cite>: this will modify the data inplace on raw data;</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Please note processed data like <cite>self._infer</cite> or <cite>self._learn</cite> are concepts different from <cite>segments</cite> in Qlib’s <cite>Dataset</cite> like “train” and “test”</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Processed data like <cite>self._infer</cite> or <cite>self._learn</cite> are underlying data processed with different processors</p></li>
+<li><p><cite>segments</cite> in Qlib’s <cite>Dataset</cite> like “train” and “test” are simply the time segmentations when querying data(“train” are often before “test” in time-series).</p></li>
+<li><p>For example, you can query <cite>data._infer</cite> processed by <cite>infer_processors</cite> in the “train” time segmentation.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instruments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_loader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../reference/api.html#qlib.data.dataset.loader.DataLoader" title="qlib.data.dataset.loader.DataLoader"><span class="pre">DataLoader</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">infer_processors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learn_processors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shared_processors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">process_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'append'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_raw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>infer_processors</strong> (<em>list</em>) – <ul>
+<li><p>list of &lt;description info&gt; of processors to generate data for inference</p></li>
+<li><p>example of &lt;description info&gt;:</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span><span class="p">)</span> <span class="n">classname</span> <span class="o">&amp;</span> <span class="n">kwargs</span><span class="p">:</span>
+    <span class="p">{</span>
+        <span class="s2">"class"</span><span class="p">:</span> <span class="s2">"MinMaxNorm"</span><span class="p">,</span>
+        <span class="s2">"kwargs"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"fit_start_time"</span><span class="p">:</span> <span class="s2">"20080101"</span><span class="p">,</span>
+            <span class="s2">"fit_end_time"</span><span class="p">:</span> <span class="s2">"20121231"</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="mi">2</span><span class="p">)</span> <span class="n">Only</span> <span class="n">classname</span><span class="p">:</span>
+    <span class="s2">"DropnaFeature"</span>
+<span class="mi">3</span><span class="p">)</span> <span class="nb">object</span> <span class="n">instance</span> <span class="n">of</span> <span class="n">Processor</span>
+</pre></div>
+</div>
+</p></li>
+<li><p><strong>learn_processors</strong> (<em>list</em>) – similar to infer_processors, but for generating data for learning models</p></li>
+<li><p><strong>process_type</strong> (<em>str</em>) – <p>PTYPE_I = ‘independent’</p>
+<ul>
+<li><p>self._infer will be processed by infer_processors</p></li>
+<li><p>self._learn will be processed by learn_processors</p></li>
+</ul>
+<p>PTYPE_A = ‘append’</p>
+<ul>
+<li><p>self._infer will be processed by infer_processors</p></li>
+<li><p>self._learn will be processed by infer_processors + learn_processors</p>
+<ul>
+<li><p>(e.g. self._infer processed by learn_processors )</p></li>
+</ul>
+</li>
+</ul>
+</p></li>
+<li><p><strong>drop_raw</strong> (<em>bool</em>) – Whether to drop the raw data</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>fit data without processing the data</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">fit_process_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p>fit and process data</p>
+<p>The input of the <cite>fit</cite> will be the output of the previous processor</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">process_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">with_fit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>process_data data. Fun <cite>processor.fit</cite> if necessary</p>
+<p>Notation: (data)  [processor]</p>
+<p># data processing flow of self.process_type == DataHandlerLP.PTYPE_I</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>(self._data)-[shared_processors]-(_shared_df)-[learn_processors]-(_learn_df)
+                                       \
+                                        -[infer_processors]-(_infer_df)
+</pre></div>
+</div>
+<p># data processing flow of self.process_type == DataHandlerLP.PTYPE_A</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>(self._data)-[shared_processors]-(_shared_df)-[infer_processors]-(_infer_df)-[learn_processors]-(_learn_df)
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>with_fit</strong> (<em>bool</em>) – The input of the <cite>fit</cite> will be the output of the previous processor</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">processor_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>configuration of data.
+# what data to be loaded from data source</p>
+<p>This method will be used when loading pickled handler from dataset.
+The data will be initialized with different time range.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">setup_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'fit_seq'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Set up the data in case of running initialization for multiple time</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>init_type</strong> (<em>str</em>) – The type <cite>IT_*</cite> listed above.</p></li>
+<li><p><strong>enable_cache</strong> (<em>bool</em>) – <p>default value is false:</p>
+<ul>
+<li><p>if <cite>enable_cache</cite> == True:</p>
+<blockquote>
+<div><p>the processed data will be saved on disk, and handler will load the cached data from the disk directly
+when we call <cite>init</cite> next time</p>
+</div></blockquote>
+</li>
+</ul>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Timestamp</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">slice</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">slice(None,</span> <span class="pre">None,</span> <span class="pre">None)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'datetime'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'__all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'raw'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'infer'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'learn'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'infer'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">squeeze</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proc_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>fetch data from underlying data source</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>selector</strong> (<em>Union</em><em>[</em><em>pd.Timestamp</em><em>, </em><em>slice</em><em>, </em><em>str</em><em>]</em>) – describe how to select data by index.</p></li>
+<li><p><strong>level</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em>) – which index level to select the data.</p></li>
+<li><p><strong>col_set</strong> (<em>str</em>) – select a set of meaningful columns.(e.g. features, columns).</p></li>
+<li><p><strong>data_key</strong> (<em>str</em>) – the data to fetch:  DK_*.</p></li>
+<li><p><strong>proc_func</strong> (<em>Callable</em>) – please refer to the doc of DataHandler.fetch</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_cols</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'__all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'raw'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'infer'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'learn'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'infer'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span></dt>
+<dd><p>get the column names</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>col_set</strong> (<em>str</em>) – select a set of meaningful columns.(e.g. features, columns).</p></li>
+<li><p><strong>data_key</strong> (<em>DATA_KEY_TYPE</em>) – the data to fetch:  DK_*.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of column names</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cast</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandlerLP" title="qlib.data.dataset.handler.DataHandlerLP"><span class="pre">DataHandlerLP</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandlerLP" title="qlib.data.dataset.handler.DataHandlerLP"><span class="pre">DataHandlerLP</span></a></span></span></dt>
+<dd><p>Motivation</p>
+<ul class="simple">
+<li><p>A user creates a datahandler in his customized package. Then he wants to share the processed handler to
+other users without introduce the package dependency and complicated data processing logic.</p></li>
+<li><p>This class make it possible by casting the class to DataHandlerLP and only keep the processed data</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>handler</strong> (<a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandlerLP" title="qlib.data.dataset.handler.DataHandlerLP"><em>DataHandlerLP</em></a>) – A subclass of DataHandlerLP</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the converted processed data</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandlerLP" title="qlib.data.dataset.handler.DataHandlerLP">DataHandlerLP</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandlerLP" title="qlib.data.dataset.handler.DataHandlerLP"><span class="pre">DataHandlerLP</span></a></span></span></dt>
+<dd><p>Motivation:
+- When user want to get a quick data handler.</p>
+<p>The created data handler will have only one shared Dataframe without processors.
+After creating the handler, user may often want to dump the handler for reuse
+Here is a typical use case</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataHandlerLP</span>
+<span class="n">dh</span> <span class="o">=</span> <span class="n">DataHandlerLP</span><span class="o">.</span><span class="n">from_df</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<span class="n">dh</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">dump_all</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>TODO:
+- The StaticDataLoader is quite slow. It don’t have to copy the data again…</p>
+</dd></dl>
+</dd></dl>
+<p>If users want to load features and labels by config, users can define a new handler and call the static method <cite>parse_config_to_fields</cite> of <code class="docutils literal notranslate"><span class="pre">qlib.contrib.data.handler.Alpha158</span></code>.</p>
+<p>Also, users can pass <code class="docutils literal notranslate"><span class="pre">qlib.contrib.data.processor.ConfigSectionProcessor</span></code> that provides some preprocess methods for features defined by config into the new handler.</p>
+</section>
+<section id="processor">
+<h3>Processor<a class="headerlink" href="#processor" title="Permalink to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">Processor</span></code> module in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is designed to be learnable and it is responsible for handling data processing such as <cite>normalization</cite> and <cite>drop none/nan features/labels</cite>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides the following <code class="docutils literal notranslate"><span class="pre">Processors</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">DropnaProcessor</span></code>: <cite>processor</cite> that drops N/A features.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DropnaLabel</span></code>: <cite>processor</cite> that drops N/A labels.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TanhProcess</span></code>: <cite>processor</cite> that uses <cite>tanh</cite> to process noise data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ProcessInf</span></code>: <cite>processor</cite> that handles infinity values, it will be replaces by the mean of the column.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Fillna</span></code>: <cite>processor</cite> that handles N/A values, which will fill the N/A value by 0 or other given number.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MinMaxNorm</span></code>: <cite>processor</cite> that applies min-max normalization.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ZscoreNorm</span></code>: <cite>processor</cite> that applies z-score normalization.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RobustZScoreNorm</span></code>: <cite>processor</cite> that applies robust z-score normalization.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CSZScoreNorm</span></code>: <cite>processor</cite> that applies cross sectional z-score normalization.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CSRankNorm</span></code>: <cite>processor</cite> that applies cross sectional rank normalization.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CSZFillna</span></code>: <cite>processor</cite> that fills N/A values in a cross sectional way by the mean of the column.</p></li>
+</ul>
+<p>Users can also create their own <cite>processor</cite> by inheriting the base class of <code class="docutils literal notranslate"><span class="pre">Processor</span></code>. Please refer to the implementation of all the processors for more information (<a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/data/dataset/processor.py">Processor Link</a>).</p>
+<p>To know more about <code class="docutils literal notranslate"><span class="pre">Processor</span></code>, please refer to <a class="reference external" href="../reference/api.html#module-qlib.data.dataset.processor">Processor API</a>.</p>
+</section>
+<section id="example">
+<h3>Example<a class="headerlink" href="#example" title="Permalink to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> can be run with <code class="docutils literal notranslate"><span class="pre">qrun</span></code> by modifying the configuration file, and can also be used as a single module.</p>
+<p>Know more about how to run <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code> with <code class="docutils literal notranslate"><span class="pre">qrun</span></code>, please refer to <a class="reference external" href="workflow.html">Workflow: Workflow Management</a></p>
+<p>Qlib provides implemented data handler <cite>Alpha158</cite>. The following example shows how to run <cite>Alpha158</cite> as a single module.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Users need to initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> with <cite>qlib.init</cite> first, please refer to <a class="reference external" href="../start/initialization.html">initialization</a>.</p>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">qlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.data.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">Alpha158</span>
+
+<span class="n">data_handler_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"start_time"</span><span class="p">:</span> <span class="s2">"2008-01-01"</span><span class="p">,</span>
+    <span class="s2">"end_time"</span><span class="p">:</span> <span class="s2">"2020-08-01"</span><span class="p">,</span>
+    <span class="s2">"fit_start_time"</span><span class="p">:</span> <span class="s2">"2008-01-01"</span><span class="p">,</span>
+    <span class="s2">"fit_end_time"</span><span class="p">:</span> <span class="s2">"2014-12-31"</span><span class="p">,</span>
+    <span class="s2">"instruments"</span><span class="p">:</span> <span class="s2">"csi300"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">Alpha158</span><span class="p">(</span><span class="o">**</span><span class="n">data_handler_config</span><span class="p">)</span>
+
+    <span class="c1"># get all the columns of the data</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">get_cols</span><span class="p">())</span>
+
+    <span class="c1"># fetch all the labels</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">col_set</span><span class="o">=</span><span class="s2">"label"</span><span class="p">))</span>
+
+    <span class="c1"># fetch all the features</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">col_set</span><span class="o">=</span><span class="s2">"feature"</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the <code class="docutils literal notranslate"><span class="pre">Alpha158</span></code>, <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> uses the label <cite>Ref($close, -2)/Ref($close, -1) - 1</cite> that means the change from T+1 to T+2, rather than <cite>Ref($close, -1)/$close - 1</cite>, of which the reason is that when getting the T day close price of a china stock, the stock can be bought on T+1 day and sold on T+2 day.</p>
+</div>
+</section>
+<section id="id12">
+<h3>API<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h3>
+<p>To know more about <code class="docutils literal notranslate"><span class="pre">Data</span> <span class="pre">Handler</span></code>, please refer to <a class="reference external" href="../reference/api.html#module-qlib.data.dataset.handler">Data Handler API</a>.</p>
+</section>
+</section>
+<section id="id13">
+<h2>Dataset<a class="headerlink" href="#id13" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> module in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> aims to prepare data for model training and inferencing.</p>
+<p>The motivation of this module is that we want to maximize the flexibility of different models to handle data that are suitable for themselves. This module gives the model the flexibility to process their data in an unique way. For instance, models such as <code class="docutils literal notranslate"><span class="pre">GBDT</span></code> may work well on data that contains <cite>nan</cite> or <cite>None</cite> value, while neural networks such as <code class="docutils literal notranslate"><span class="pre">MLP</span></code> will break down on such data.</p>
+<p>If user’s model need process its data in a different way, user could implement his own <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> class. If the model’s
+data processing is not special, <code class="docutils literal notranslate"><span class="pre">DatasetH</span></code> can be used directly.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">DatasetH</span></code> class is the <cite>dataset</cite> with <cite>Data Handler</cite>. Here is the most important interface of the class:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.data.dataset.__init__.</span></span><span class="sig-name descname"><span class="pre">DatasetH</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandler" title="qlib.data.dataset.handler.DataHandler"><span class="pre">DataHandler</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fetch_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Dataset with Data(H)andler</p>
+<p>User should try to put the data preprocessing functions into handler.
+Only following data processing functions should be placed in Dataset:</p>
+<ul class="simple">
+<li><p>The processing is related to specific model.</p></li>
+<li><p>The processing is related to data split.</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandler" title="qlib.data.dataset.handler.DataHandler"><span class="pre">DataHandler</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fetch_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Setup the underlying data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>handler</strong> (<em>Union</em><em>[</em><em>dict</em><em>, </em><a class="reference internal" href="../reference/api.html#qlib.data.dataset.handler.DataHandler" title="qlib.data.dataset.handler.DataHandler"><em>DataHandler</em></a><em>]</em>) – <p>handler could be:</p>
+<ul>
+<li><p>instance of <cite>DataHandler</cite></p></li>
+<li><p>config of <cite>DataHandler</cite>.  Please refer to <cite>DataHandler</cite></p></li>
+</ul>
+</p></li>
+<li><p><strong>segments</strong> (<em>dict</em>) – <p>Describe the options to segment the data.
+Here are some examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span><span class="p">)</span> <span class="s1">'segments'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'train'</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2008-01-01"</span><span class="p">,</span> <span class="s2">"2014-12-31"</span><span class="p">),</span>
+        <span class="s1">'valid'</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2017-01-01"</span><span class="p">,</span> <span class="s2">"2020-08-01"</span><span class="p">,),</span>
+        <span class="s1">'test'</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2015-01-01"</span><span class="p">,</span> <span class="s2">"2016-12-31"</span><span class="p">,),</span>
+    <span class="p">}</span>
+<span class="mi">2</span><span class="p">)</span> <span class="s1">'segments'</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'insample'</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2008-01-01"</span><span class="p">,</span> <span class="s2">"2014-12-31"</span><span class="p">),</span>
+        <span class="s1">'outsample'</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2017-01-01"</span><span class="p">,</span> <span class="s2">"2020-08-01"</span><span class="p">,),</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Initialize the DatasetH</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>handler_kwargs</strong> (<em>dict</em>) – <p>Config of DataHandler, which could include the following arguments:</p>
+<ul>
+<li><p>arguments of DataHandler.conf_data, such as ‘instruments’, ‘start_time’ and ‘end_time’.</p></li>
+</ul>
+</p></li>
+<li><p><strong>kwargs</strong> (<em>dict</em>) – <p>Config of DatasetH, such as</p>
+<ul>
+<li><dl class="simple">
+<dt>segments<span class="classifier">dict</span></dt><dd><p>Config of segments which is same as ‘segments’ in self.__init__</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">setup_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Setup the Data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>handler_kwargs</strong> (<em>dict</em>) – <p>init arguments of DataHandler, which could include the following arguments:</p>
+<ul class="simple">
+<li><p>init_type : Init Type of Handler</p></li>
+<li><p>enable_cache : whether to enable cache</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">prepare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">segments</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">slice</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'__all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'infer'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">DataFrame</span></span></span></dt>
+<dd><p>Prepare the data for learning and inference.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>segments</strong> (<em>Union</em><em>[</em><em>List</em><em>[</em><em>Text</em><em>]</em><em>, </em><em>Tuple</em><em>[</em><em>Text</em><em>]</em><em>, </em><em>Text</em><em>, </em><em>slice</em><em>]</em>) – <p>Describe the scope of the data to be prepared
+Here are some examples:</p>
+<ul>
+<li><p>’train’</p></li>
+<li><p>[‘train’, ‘valid’]</p></li>
+</ul>
+</p></li>
+<li><p><strong>col_set</strong> (<em>str</em>) – <p>The col_set will be passed to self.handler when fetching data.
+TODO: make it automatic:</p>
+<ul>
+<li><p>select DK_I for test data</p></li>
+<li><p>select DK_L for training data.</p></li>
+</ul>
+</p></li>
+<li><p><strong>data_key</strong> (<em>str</em>) – The data to fetch:  DK_*
+Default is DK_I, which indicate fetching data for <strong>inference</strong>.</p></li>
+<li><p><strong>kwargs</strong> – <dl class="simple">
+<dt>The parameters that kwargs may contain:</dt><dd><dl class="simple">
+<dt>flt_col<span class="classifier">str</span></dt><dd><p>It only exists in TSDatasetH, can be used to add a column of data(True or False) to filter data.
+This parameter is only supported when it is an instance of TSDatasetH.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Union[List[pd.DataFrame], pd.DataFrame]</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError:</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<section id="id14">
+<h3>API<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h3>
+<p>To know more about <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>, please refer to <a class="reference external" href="../reference/api.html#dataset">Dataset API</a>.</p>
+</section>
+</section>
+<section id="cache">
+<h2>Cache<a class="headerlink" href="#cache" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Cache</span></code> is an optional module that helps accelerate providing data by saving some frequently-used data as cache file. <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a <cite>Memcache</cite> class to cache the most-frequently-used data in memory, an inheritable <cite>ExpressionCache</cite> class, and an inheritable <cite>DatasetCache</cite> class.</p>
+<section id="global-memory-cache">
+<h3>Global Memory Cache<a class="headerlink" href="#global-memory-cache" title="Permalink to this heading"></a></h3>
+<p><cite>Memcache</cite> is a global memory cache mechanism that composes of three <cite>MemCacheUnit</cite> instances to cache <strong>Calendar</strong>, <strong>Instruments</strong>, and <strong>Features</strong>. The <cite>MemCache</cite> is defined globally in <cite>cache.py</cite> as <cite>H</cite>. Users can use <cite>H[‘c’], H[‘i’], H[‘f’]</cite> to get/set <cite>memcache</cite>.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.data.cache.</span></span><span class="sig-name descname"><span class="pre">MemCacheUnit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Memory Cache Unit.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span></dt>
+<dd></dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">limited</span></span></dt>
+<dd><p>whether memory cache is limited</p>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.data.cache.</span></span><span class="sig-name descname"><span class="pre">MemCache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mem_cache_size_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'length'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Memory cache.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mem_cache_size_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'length'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mem_cache_size_limit</strong> – cache max size.</p></li>
+<li><p><strong>limit_type</strong> – length or sizeof; length(call fun: len), size(call fun: sys.getsizeof).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+</section>
+<section id="expressioncache">
+<h3>ExpressionCache<a class="headerlink" href="#expressioncache" title="Permalink to this heading"></a></h3>
+<p><cite>ExpressionCache</cite> is a cache mechanism that saves expressions such as <strong>Mean($close, 5)</strong>. Users can inherit this base class to define their own cache mechanism that saves expressions according to the following steps.</p>
+<ul class="simple">
+<li><p>Override <cite>self._uri</cite> method to define how the cache file path is generated</p></li>
+<li><p>Override <cite>self._expression</cite> method to define what data will be cached and how to cache it.</p></li>
+</ul>
+<p>The following shows the details about the interfaces:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.data.cache.</span></span><span class="sig-name descname"><span class="pre">ExpressionCache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Expression cache mechanism base class.</p>
+<p>This class is used to wrap expression provider with self-defined expression cache mechanism.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Override the <cite>_uri</cite> and <cite>_expression</cite> method to create your own expression cache mechanism.</p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">expression</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instrument</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Get expression data.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Same interface as <cite>expression</cite> method in expression provider</p>
+</div>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'day'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update expression cache to latest calendar.</p>
+<p>Override this method to define how to update expression cache corresponding to users’ own cache mechanism.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cache_uri</strong> (<em>str</em><em> or </em><em>Path</em>) – the complete uri of expression cache file (include dir path).</p></li>
+<li><p><strong>freq</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>0(successful update)/ 1(no need to update)/ 2(update failure).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> has currently provided implemented disk cache <cite>DiskExpressionCache</cite> which inherits from <cite>ExpressionCache</cite> . The expressions data will be stored in the disk.</p>
+</section>
+<section id="datasetcache">
+<h3>DatasetCache<a class="headerlink" href="#datasetcache" title="Permalink to this heading"></a></h3>
+<p><cite>DatasetCache</cite> is a cache mechanism that saves datasets. A certain dataset is regulated by a stock pool configuration (or a series of instruments, though not recommended), a list of expressions or static feature fields, the start time, and end time for the collected features and the frequency. Users can inherit this base class to define their own cache mechanism that saves datasets according to the following steps.</p>
+<ul class="simple">
+<li><p>Override <cite>self._uri</cite> method to define how their cache file path is generated</p></li>
+<li><p>Override <cite>self._expression</cite> method to define what data will be cached and how to cache it.</p></li>
+</ul>
+<p>The following shows the details about the interfaces:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.data.cache.</span></span><span class="sig-name descname"><span class="pre">DatasetCache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Dataset cache mechanism base class.</p>
+<p>This class is used to wrap dataset provider with self-defined dataset cache mechanism.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Override the <cite>_uri</cite> and <cite>_dataset</cite> method to create your own dataset cache mechanism.</p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instruments</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'day'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disk_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inst_processors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Get feature dataset.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Same interface as <cite>dataset</cite> method in dataset provider</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The server use redis_lock to make sure
+read-write conflicts will not be triggered
+but client readers are not considered.</p>
+</div>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'day'</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Update dataset cache to latest calendar.</p>
+<p>Override this method to define how to update dataset cache corresponding to users’ own cache mechanism.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cache_uri</strong> (<em>str</em><em> or </em><em>Path</em>) – the complete uri of dataset cache file (include dir path).</p></li>
+<li><p><strong>freq</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>0(successful update)/ 1(no need to update)/ 2(update failure)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cache_to_origin_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>cache data to origin data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – pd.DataFrame, cache data.</p></li>
+<li><p><strong>fields</strong> – feature fields.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">normalize_uri_args</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instruments</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>normalize uri args</p>
+</dd></dl>
+</dd></dl>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> has currently provided implemented disk cache <cite>DiskDatasetCache</cite> which inherits from <cite>DatasetCache</cite> . The datasets’ data will be stored in the disk.</p>
+</section>
+</section>
+<section id="data-and-cache-file-structure">
+<h2>Data and Cache File Structure<a class="headerlink" href="#data-and-cache-file-structure" title="Permalink to this heading"></a></h2>
+<p>We’ve specially designed a file structure to manage data and cache, please refer to the <a class="reference external" href="https://arxiv.org/abs/2009.11189">File storage design section in Qlib paper</a> for detailed information. The file structure of data and cache is listed as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="n">data</span><span class="o">/</span>
+    <span class="p">[</span><span class="n">raw</span> <span class="n">data</span><span class="p">]</span> <span class="n">updated</span> <span class="n">by</span> <span class="n">data</span> <span class="n">providers</span>
+    <span class="o">-</span> <span class="n">calendars</span><span class="o">/</span>
+        <span class="o">-</span> <span class="n">day</span><span class="o">.</span><span class="n">txt</span>
+    <span class="o">-</span> <span class="n">instruments</span><span class="o">/</span>
+        <span class="o">-</span> <span class="nb">all</span><span class="o">.</span><span class="n">txt</span>
+        <span class="o">-</span> <span class="n">csi500</span><span class="o">.</span><span class="n">txt</span>
+        <span class="o">-</span> <span class="o">...</span>
+    <span class="o">-</span> <span class="n">features</span><span class="o">/</span>
+        <span class="o">-</span> <span class="n">sh600000</span><span class="o">/</span>
+            <span class="o">-</span> <span class="nb">open</span><span class="o">.</span><span class="n">day</span><span class="o">.</span><span class="n">bin</span>
+            <span class="o">-</span> <span class="n">close</span><span class="o">.</span><span class="n">day</span><span class="o">.</span><span class="n">bin</span>
+            <span class="o">-</span> <span class="o">...</span>
+        <span class="o">-</span> <span class="o">...</span>
+    <span class="p">[</span><span class="n">cached</span> <span class="n">data</span><span class="p">]</span> <span class="n">updated</span> <span class="n">when</span> <span class="n">raw</span> <span class="n">data</span> <span class="ow">is</span> <span class="n">updated</span>
+    <span class="o">-</span> <span class="n">calculated</span> <span class="n">features</span><span class="o">/</span>
+        <span class="o">-</span> <span class="n">sh600000</span><span class="o">/</span>
+            <span class="o">-</span> <span class="p">[</span><span class="nb">hash</span><span class="p">(</span><span class="n">instrtument</span><span class="p">,</span> <span class="n">field_expression</span><span class="p">,</span> <span class="n">freq</span><span class="p">)]</span>
+                <span class="o">-</span> <span class="nb">all</span><span class="o">-</span><span class="n">time</span> <span class="n">expression</span> <span class="o">-</span><span class="n">cache</span> <span class="n">data</span> <span class="n">file</span>
+                <span class="o">-</span> <span class="o">.</span><span class="n">meta</span> <span class="p">:</span> <span class="n">an</span> <span class="n">assorted</span> <span class="n">meta</span> <span class="n">file</span> <span class="n">recording</span> <span class="n">the</span> <span class="n">instrument</span> <span class="n">name</span><span class="p">,</span> <span class="n">field</span> <span class="n">name</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="ow">and</span> <span class="n">visit</span> <span class="n">times</span>
+        <span class="o">-</span> <span class="o">...</span>
+    <span class="o">-</span> <span class="n">cache</span><span class="o">/</span>
+        <span class="o">-</span> <span class="p">[</span><span class="nb">hash</span><span class="p">(</span><span class="n">stockpool_config</span><span class="p">,</span> <span class="n">field_expression_list</span><span class="p">,</span> <span class="n">freq</span><span class="p">)]</span>
+            <span class="o">-</span> <span class="nb">all</span><span class="o">-</span><span class="n">time</span> <span class="n">Dataset</span><span class="o">-</span><span class="n">cache</span> <span class="n">data</span> <span class="n">file</span>
+            <span class="o">-</span> <span class="o">.</span><span class="n">meta</span> <span class="p">:</span> <span class="n">an</span> <span class="n">assorted</span> <span class="n">meta</span> <span class="n">file</span> <span class="n">recording</span> <span class="n">the</span> <span class="n">stockpool</span> <span class="n">config</span><span class="p">,</span> <span class="n">field</span> <span class="n">names</span> <span class="ow">and</span> <span class="n">visit</span> <span class="n">times</span>
+            <span class="o">-</span> <span class="o">.</span><span class="n">index</span> <span class="p">:</span> <span class="n">an</span> <span class="n">assorted</span> <span class="n">index</span> <span class="n">file</span> <span class="n">recording</span> <span class="n">the</span> <span class="n">line</span> <span class="n">index</span> <span class="n">of</span> <span class="nb">all</span> <span class="n">calendars</span>
+        <span class="o">-</span> <span class="o">...</span>
+</pre></div>
+</div>
+</section>
+</section>
+</div>
+</body>
+</html>

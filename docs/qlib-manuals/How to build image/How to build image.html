@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="build-docker-image">
+<span id="docker-image"></span><h1>Build Docker Image<a class="headerlink" href="#build-docker-image" title="Permalink to this heading"></a></h1>
+<section id="dockerfile">
+<h2>Dockerfile<a class="headerlink" href="#dockerfile" title="Permalink to this heading"></a></h2>
+<p>There is a <strong>Dockerfile</strong> file in the root directory of the project from which you can build the docker image. There are two build methods in Dockerfile to choose from.
+When executing the build command, use the <code class="docutils literal notranslate"><span class="pre">--build-arg</span></code> parameter to control the image version. The <code class="docutils literal notranslate"><span class="pre">--build-arg</span></code> parameter defaults to <code class="docutils literal notranslate"><span class="pre">yes</span></code>, which builds the <code class="docutils literal notranslate"><span class="pre">stable</span></code> version of the qlib image.</p>
+<p>1.For the <code class="docutils literal notranslate"><span class="pre">stable</span></code> version, use <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pyqlib</span></code> to build the qlib image.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>build<span class="w"> </span>--build-arg<span class="w"> </span><span class="nv">IS_STABLE</span><span class="o">=</span>yes<span class="w"> </span>-t<span class="w"> </span>&lt;image<span class="w"> </span>name&gt;<span class="w"> </span>-f<span class="w"> </span>./Dockerfile<span class="w"> </span>.
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>&lt;image<span class="w"> </span>name&gt;<span class="w"> </span>-f<span class="w"> </span>./Dockerfile<span class="w"> </span>.
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>For the <code class="docutils literal notranslate"><span class="pre">nightly</span></code> version, use current source code to build the qlib image.</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>build<span class="w"> </span>--build-arg<span class="w"> </span><span class="nv">IS_STABLE</span><span class="o">=</span>no<span class="w"> </span>-t<span class="w"> </span>&lt;image<span class="w"> </span>name&gt;<span class="w"> </span>-f<span class="w"> </span>./Dockerfile<span class="w"> </span>.
+</pre></div>
+</div>
+</section>
+<section id="auto-build-of-qlib-images">
+<h2>Auto build of qlib images<a class="headerlink" href="#auto-build-of-qlib-images" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>There is a <strong>build_docker_image.sh</strong> file in the root directory of your project, which can be used to automatically build docker images and upload them to your docker hub repository(Optional, configuration required).</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sh<span class="w"> </span>build_docker_image.sh
+&gt;&gt;&gt;<span class="w"> </span>Do<span class="w"> </span>you<span class="w"> </span>want<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>the<span class="w"> </span>nightly<span class="w"> </span>version<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span>qlib<span class="w"> </span>image?<span class="w"> </span><span class="o">(</span>default<span class="w"> </span>is<span class="w"> </span>stable<span class="o">)</span><span class="w"> </span><span class="o">(</span>yes/no<span class="o">)</span>:
+&gt;&gt;&gt;<span class="w"> </span>Is<span class="w"> </span>it<span class="w"> </span>uploaded<span class="w"> </span>to<span class="w"> </span>docker<span class="w"> </span>hub?<span class="w"> </span><span class="o">(</span>default<span class="w"> </span>is<span class="w"> </span>no<span class="o">)</span><span class="w"> </span><span class="o">(</span>yes/no<span class="o">)</span>:
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>If you want to upload the built image to your docker hub repository, you need to edit your <strong>build_docker_image.sh</strong> file first, fill in <code class="docutils literal notranslate"><span class="pre">docker_user</span></code> in the file, and then execute this file.</p></li>
+</ol>
+</section>
+<section id="how-to-use-qlib-images">
+<h2>How to use qlib images<a class="headerlink" href="#how-to-use-qlib-images" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Start a new Docker container</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>-it<span class="w"> </span>--name<span class="w"> </span>&lt;container<span class="w"> </span>name&gt;<span class="w"> </span>-v<span class="w"> </span>&lt;Mounted<span class="w"> </span><span class="nb">local</span><span class="w"> </span>directory&gt;:/app<span class="w"> </span>&lt;image<span class="w"> </span>name&gt;
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>At this point you are in the docker environment and can run the qlib scripts. An example:</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>&gt;&gt;&gt;<span class="w"> </span>python<span class="w"> </span>scripts/get_data.py<span class="w"> </span>qlib_data<span class="w"> </span>--name<span class="w"> </span>qlib_data_simple<span class="w"> </span>--target_dir<span class="w"> </span>~/.qlib/qlib_data/cn_data<span class="w"> </span>--interval<span class="w"> </span>1d<span class="w"> </span>--region<span class="w"> </span>cn
+&gt;&gt;&gt;<span class="w"> </span>python<span class="w"> </span>qlib/workflow/cli.py<span class="w"> </span>examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>Exit the container</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>&gt;&gt;&gt;<span class="w"> </span><span class="nb">exit</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="4">
+<li><p>Restart the container</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>start<span class="w"> </span>-i<span class="w"> </span>-a<span class="w"> </span>&lt;container<span class="w"> </span>name&gt;
+</pre></div>
+</div>
+<ol class="arabic simple" start="5">
+<li><p>Stop the container</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>stop<span class="w"> </span>-i<span class="w"> </span>-a<span class="w"> </span>&lt;container<span class="w"> </span>name&gt;
+</pre></div>
+</div>
+<ol class="arabic simple" start="6">
+<li><p>Delete the container</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>rm<span class="w"> </span>&lt;container<span class="w"> </span>name&gt;
+</pre></div>
+</div>
+<ol class="arabic simple" start="7">
+<li><p>For more information on using docker see the <a class="reference external" href="https://docs.docker.com/reference/cli/docker/">docker documentation</a>.</p></li>
+</ol>
+</section>
+</section>
+</div>
+</body>
+</html>

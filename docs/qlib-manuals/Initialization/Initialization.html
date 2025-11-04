@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="qlib-initialization">
+<span id="initialization"></span><h1>Qlib Initialization<a class="headerlink" href="#qlib-initialization" title="Permalink to this heading"></a></h1>
+<section id="id1">
+<h2>Initialization<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<p>Please follow the steps below to initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>.</p>
+<p>Download and prepare the Data: execute the following command to download stock data. Please pay <cite>attention</cite> that the data is collected from <a class="reference external" href="https://finance.yahoo.com/lookup">Yahoo Finance</a> and the data might not be perfect. We recommend users to prepare their own data if they have high-quality datasets. Please refer to <a class="reference external" href="../component/data.html#converting-csv-format-into-qlib-format">Data</a> for more information about customized dataset.</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/get_data.py<span class="w"> </span>qlib_data<span class="w"> </span>--target_dir<span class="w"> </span>~/.qlib/qlib_data/cn_data<span class="w"> </span>--region<span class="w"> </span>cn
+</pre></div>
+</div>
+</div></blockquote>
+<p>Please refer to <a class="reference external" href="../component/data.html#data-preparation">Data Preparation</a> for more information about <cite>get_data.py</cite>,</p>
+<p>Initialize Qlib before calling other APIs: run following code in python.</p>
+<blockquote>
+<div><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">qlib</span>
+<span class="c1"># region in [REG_CN, REG_US]</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.constant</span><span class="w"> </span><span class="kn">import</span> <span class="n">REG_CN</span>
+<span class="n">provider_uri</span> <span class="o">=</span> <span class="s2">"~/.qlib/qlib_data/cn_data"</span>  <span class="c1"># target_dir</span>
+<span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=</span><span class="n">provider_uri</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="n">REG_CN</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Do not import qlib package in the repository directory  of <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, otherwise, errors may occur.</p>
+</div>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading"></a></h3>
+<p>Besides <cite>provider_uri</cite> and <cite>region</cite>, <cite>qlib.init</cite> has other parameters.
+The following are several important parameters of <cite>qlib.init</cite> (<cite>Qlib</cite> has a lot of config. Only part of parameters are limited here. More detailed setting can be found <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/config.py">here</a>):</p>
+<ul>
+<li><dl class="simple">
+<dt><cite>provider_uri</cite></dt><dd><p>Type: str. The URI of the Qlib data. For example, it could be the location where the data loaded by <code class="docutils literal notranslate"><span class="pre">get_data.py</span></code> are stored.</p>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><cite>region</cite></dt><dd><dl>
+<dt>Type: str, optional parameter(default: <cite>qlib.constant.REG_CN</cite>).</dt><dd><p>Currently: <code class="docutils literal notranslate"><span class="pre">qlib.constant.REG_US</span></code> (‘us’) and <code class="docutils literal notranslate"><span class="pre">qlib.constant.REG_CN</span></code> (‘cn’) is supported. Different value of  <cite>region</cite> will result in different stock market mode.
+- <code class="docutils literal notranslate"><span class="pre">qlib.constant.REG_US</span></code>: US stock market.
+- <code class="docutils literal notranslate"><span class="pre">qlib.constant.REG_CN</span></code>: China stock market.</p>
+<p>Different modes will result in different trading limitations and costs.
+The region is just <a class="reference external" href="https://github.com/microsoft/qlib/blob/528f74af099bf6156e9480bcd2bb28e453231212/qlib/config.py#L249">shortcuts for defining a batch of configurations</a>, which include minimal trading order unit (<code class="docutils literal notranslate"><span class="pre">trade_unit</span></code>),  trading limitation (<code class="docutils literal notranslate"><span class="pre">limit_threshold</span></code>) , etc.  It is not a necessary part and users can set the key configurations manually if the existing region setting can’t meet their requirements.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>redis_host</cite></dt><dd><dl class="simple">
+<dt>Type: str, optional parameter(default: “127.0.0.1”), host of <cite>redis</cite></dt><dd><p>The lock and cache mechanism relies on redis.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><cite>redis_port</cite></dt><dd><p>Type: int, optional parameter(default: 6379), port of <cite>redis</cite></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The value of <cite>region</cite> should be aligned with the data stored in <cite>provider_uri</cite>. Currently, <code class="docutils literal notranslate"><span class="pre">scripts/get_data.py</span></code> only provides China stock market data. If users want to use the US stock market data, they should prepare their own US-stock data in <cite>provider_uri</cite> and switch to US-stock mode.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If Qlib fails to connect redis via <cite>redis_host</cite> and <cite>redis_port</cite>, cache mechanism will not be used! Please refer to <a class="reference external" href="../component/data.html#cache">Cache</a> for details.</p>
+</div>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><cite>exp_manager</cite></dt><dd><p>Type: dict, optional parameter, the setting of <cite>experiment manager</cite> to be used in qlib. Users can specify an experiment manager class, as well as the tracking URI for all the experiments. However, please be aware that we only support input of a dictionary in the following style for <cite>exp_manager</cite>. For more information about <cite>exp_manager</cite>, users can refer to <a class="reference external" href="../component/recorder.html">Recorder: Experiment Management</a>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># For example, if you want to set your tracking_uri to a &lt;specific folder&gt;, you can initialize qlib below</span>
+<span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=</span><span class="n">provider_uri</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="n">REG_CN</span><span class="p">,</span> <span class="n">exp_manager</span><span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"class"</span><span class="p">:</span> <span class="s2">"MLflowExpManager"</span><span class="p">,</span>
+    <span class="s2">"module_path"</span><span class="p">:</span> <span class="s2">"qlib.workflow.expm"</span><span class="p">,</span>
+    <span class="s2">"kwargs"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"uri"</span><span class="p">:</span> <span class="s2">"python_execution_path/mlruns"</span><span class="p">,</span>
+        <span class="s2">"default_exp_name"</span><span class="p">:</span> <span class="s2">"Experiment"</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><cite>mongo</cite></dt><dd><p>Type: dict, optional parameter, the setting of <a class="reference external" href="https://www.mongodb.com/">MongoDB</a> which will be used in some features such as <a class="reference external" href="../advanced/task_management.html">Task Management</a>, with high performance and clustered processing.
+Users need to follow the steps in  <a class="reference external" href="https://www.mongodb.com/try/download/community">installation</a>  to install MongoDB firstly and then access it via a URI.
+Users can access mongodb with credential by setting “task_url”  to a string like <cite>“mongodb://%s:%s@%s” % (user, pwd, host + “:” + port)</cite>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># For example, you can initialize qlib below</span>
+<span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">provider_uri</span><span class="o">=</span><span class="n">provider_uri</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="n">REG_CN</span><span class="p">,</span> <span class="n">mongo</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">"task_url"</span><span class="p">:</span> <span class="s2">"mongodb://localhost:27017/"</span><span class="p">,</span>  <span class="c1"># your mongo url</span>
+    <span class="s2">"task_db_name"</span><span class="p">:</span> <span class="s2">"rolling_db"</span><span class="p">,</span> <span class="c1"># the database name of Task Management</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>logging_level</cite></dt><dd><p>The logging level for the system.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><cite>kernels</cite></dt><dd><p>The number of processes used when calculating features in Qlib’s expression engine. It is very helpful to set it to 1 when you are debuggin an expression calculating exception</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</section>
+</section>
+</div>
+</body>
+</html>

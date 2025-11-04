@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="qlib-faq">
+<h1>Qlib FAQ<a class="headerlink" href="#qlib-faq" title="Permalink to this heading"></a></h1>
+<section id="qlib-frequently-asked-questions">
+<h2>Qlib Frequently Asked Questions<a class="headerlink" href="#qlib-frequently-asked-questions" title="Permalink to this heading"></a></h2>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#runtimeerror-an-attempt-has-been-made-to-start-a-new-process-before-the-current-process-has-finished-its-bootstrapping-phase" id="id1">1. RuntimeError: An attempt has been made to start a new process before the current process has finished its bootstrapping phase…</a></p></li>
+<li><p><a class="reference internal" href="#qlib-data-cache-qlibcacheexception-it-sees-the-key-of-the-redis-lock-has-existed-in-your-redis-db-now" id="id2">2. qlib.data.cache.QlibCacheException: It sees the key(…) of the redis lock has existed in your redis db now.</a></p></li>
+<li><p><a class="reference internal" href="#modulenotfounderror-no-module-named-qlib-data-libs-rolling" id="id3">3. ModuleNotFoundError: No module named ‘qlib.data._libs.rolling’</a></p></li>
+<li><p><a class="reference internal" href="#badnamespaceerror-is-not-a-connected-namespace" id="id4">4. BadNamespaceError: / is not a connected namespace</a></p></li>
+<li><p><a class="reference internal" href="#typeerror-send-got-an-unexpected-keyword-argument-binary" id="id5">5. TypeError: send() got an unexpected keyword argument ‘binary’</a></p></li>
+</ul>
+</nav>
+<hr class="docutils"/>
+<section id="runtimeerror-an-attempt-has-been-made-to-start-a-new-process-before-the-current-process-has-finished-its-bootstrapping-phase">
+<h3>1. RuntimeError: An attempt has been made to start a new process before the current process has finished its bootstrapping phase…<a class="headerlink" href="#runtimeerror-an-attempt-has-been-made-to-start-a-new-process-before-the-current-process-has-finished-its-bootstrapping-phase" title="Permalink to this heading"></a></h3>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">RuntimeError:</span>
+<span class="go">        An attempt has been made to start a new process before the</span>
+<span class="go">        current process has finished its bootstrapping phase.</span>
+
+<span class="go">        This probably means that you are not using fork to start your</span>
+<span class="go">        child processes and you have forgotten to use the proper idiom</span>
+<span class="go">        in the main module:</span>
+
+<span class="go">            if __name__ == '__main__':</span>
+<span class="go">                freeze_support()</span>
+<span class="go">                ...</span>
+
+<span class="go">        The "freeze_support()" line can be omitted if the program</span>
+<span class="go">        is not going to be frozen to produce an executable.</span>
+</pre></div>
+</div>
+<p>This is caused by the limitation of multiprocessing under windows OS. Please refer to <a class="reference external" href="https://stackoverflow.com/a/24374798">here</a> for more info.</p>
+<p><strong>Solution</strong>: To select a start method you use the <code class="docutils literal notranslate"><span class="pre">D.features</span></code> in the if __name__ == ‘__main__’ clause of the main module. For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">qlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">qlib</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+    <span class="n">instruments</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"SH600000"</span><span class="p">]</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"$close"</span><span class="p">,</span> <span class="s2">"$change"</span><span class="p">]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">features</span><span class="p">(</span><span class="n">instruments</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2010-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2012-12-31'</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="qlib-data-cache-qlibcacheexception-it-sees-the-key-of-the-redis-lock-has-existed-in-your-redis-db-now">
+<h3>2. qlib.data.cache.QlibCacheException: It sees the key(…) of the redis lock has existed in your redis db now.<a class="headerlink" href="#qlib-data-cache-qlibcacheexception-it-sees-the-key-of-the-redis-lock-has-existed-in-your-redis-db-now" title="Permalink to this heading"></a></h3>
+<p>It sees the key of the redis lock has existed in your redis db now. You can use the following command to clear your redis keys and rerun your commands</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>redis-cli
+<span class="go">&gt; select 1</span>
+<span class="go">&gt; flushdb</span>
+</pre></div>
+</div>
+<p>If the issue is not resolved, use <code class="docutils literal notranslate"><span class="pre">keys</span> <span class="pre">*</span></code> to find if multiple keys exist. If so, try using <code class="docutils literal notranslate"><span class="pre">flushall</span></code> to clear all the keys.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">qlib.config.redis_task_db</span></code> defaults is <code class="docutils literal notranslate"><span class="pre">1</span></code>, users can use <code class="docutils literal notranslate"><span class="pre">qlib.init(redis_task_db=&lt;other_db&gt;)</span></code> settings.</p>
+</div>
+<p>Also, feel free to post a new issue in our GitHub repository. We always check each issue carefully and try our best to solve them.</p>
+</section>
+<section id="modulenotfounderror-no-module-named-qlib-data-libs-rolling">
+<h3>3. ModuleNotFoundError: No module named ‘qlib.data._libs.rolling’<a class="headerlink" href="#modulenotfounderror-no-module-named-qlib-data-libs-rolling" title="Permalink to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#### Do not import qlib package in the repository directory in case of importing qlib from . without compiling #####</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+<span class="n">File</span> <span class="s2">"&lt;stdin&gt;"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">1</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+<span class="n">File</span> <span class="s2">"qlib/qlib/__init__.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">19</span><span class="p">,</span> <span class="ow">in</span> <span class="n">init</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.data.cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">H</span>
+<span class="n">File</span> <span class="s2">"qlib/qlib/data/__init__.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">8</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.data</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="n">File</span> <span class="s2">"qlib/qlib/data/data.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">20</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">H</span>
+<span class="n">File</span> <span class="s2">"qlib/qlib/data/cache.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">36</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.ops</span><span class="w"> </span><span class="kn">import</span> <span class="n">Operators</span>
+<span class="n">File</span> <span class="s2">"qlib/qlib/data/ops.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">19</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._libs.rolling</span><span class="w"> </span><span class="kn">import</span> <span class="n">rolling_slope</span><span class="p">,</span> <span class="n">rolling_rsquare</span><span class="p">,</span> <span class="n">rolling_resi</span>
+<span class="ne">ModuleNotFoundError</span><span class="p">:</span> <span class="n">No</span> <span class="n">module</span> <span class="n">named</span> <span class="s1">'qlib.data._libs.rolling'</span>
+</pre></div>
+</div>
+<ul>
+<li><p>If the error occurs when importing <code class="docutils literal notranslate"><span class="pre">qlib</span></code> package with <code class="docutils literal notranslate"><span class="pre">PyCharm</span></code> IDE, users can execute the following command in the project root folder to compile Cython files and generate executable files:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>setup.py<span class="w"> </span>build_ext<span class="w"> </span>--inplace
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>If the error occurs when importing <code class="docutils literal notranslate"><span class="pre">qlib</span></code> package with command <code class="docutils literal notranslate"><span class="pre">python</span></code> , users need to change the running directory to ensure that the script does not run in the project directory.</p></li>
+</ul>
+</section>
+<section id="badnamespaceerror-is-not-a-connected-namespace">
+<h3>4. BadNamespaceError: / is not a connected namespace<a class="headerlink" href="#badnamespaceerror-is-not-a-connected-namespace" title="Permalink to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">File</span> <span class="s2">"qlib_online.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">35</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+  <span class="n">cal</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">calendar</span><span class="p">()</span>
+<span class="n">File</span> <span class="s2">"e:\code\python\microsoft\qlib_latest\qlib\qlib\data\data.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">973</span><span class="p">,</span> <span class="ow">in</span> <span class="n">calendar</span>
+  <span class="k">return</span> <span class="n">Cal</span><span class="o">.</span><span class="n">calendar</span><span class="p">(</span><span class="n">start_time</span><span class="p">,</span> <span class="n">end_time</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">future</span><span class="o">=</span><span class="n">future</span><span class="p">)</span>
+<span class="n">File</span> <span class="s2">"e:\code\python\microsoft\qlib_latest\qlib\qlib\data\data.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">798</span><span class="p">,</span> <span class="ow">in</span> <span class="n">calendar</span>
+  <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span>
+<span class="n">File</span> <span class="s2">"e:\code\python\microsoft\qlib_latest\qlib\qlib\data\client.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">101</span><span class="p">,</span> <span class="ow">in</span> <span class="n">send_request</span>
+  <span class="bp">self</span><span class="o">.</span><span class="n">sio</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">request_type</span> <span class="o">+</span> <span class="s2">"_request"</span><span class="p">,</span> <span class="n">request_content</span><span class="p">)</span>
+<span class="n">File</span> <span class="s2">"G:</span><span class="se">\a</span><span class="s2">pps\miniconda\envs\qlib\lib\site-packages\python_socketio-5.3.0-py3.8.egg\socketio\client.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">369</span><span class="p">,</span> <span class="ow">in</span> <span class="n">emit</span>
+  <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">BadNamespaceError</span><span class="p">(</span>
+<span class="n">BadNamespaceError</span><span class="p">:</span> <span class="o">/</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">a</span> <span class="n">connected</span> <span class="n">namespace</span><span class="o">.</span>
+</pre></div>
+</div>
+<ul>
+<li><p>The version of <code class="docutils literal notranslate"><span class="pre">python-socketio</span></code> in qlib needs to be the same as the version of <code class="docutils literal notranslate"><span class="pre">python-socketio</span></code> in qlib-server:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>python-socketio<span class="o">==</span>&lt;qlib-server<span class="w"> </span>python-socketio<span class="w"> </span>version&gt;
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="typeerror-send-got-an-unexpected-keyword-argument-binary">
+<h3>5. TypeError: send() got an unexpected keyword argument ‘binary’<a class="headerlink" href="#typeerror-send-got-an-unexpected-keyword-argument-binary" title="Permalink to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">File</span> <span class="s2">"qlib_online.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">35</span><span class="p">,</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">module</span><span class="o">&gt;</span>
+  <span class="n">cal</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">calendar</span><span class="p">()</span>
+<span class="n">File</span> <span class="s2">"e:\code\python\microsoft\qlib_latest\qlib\qlib\data\data.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">973</span><span class="p">,</span> <span class="ow">in</span> <span class="n">calendar</span>
+  <span class="k">return</span> <span class="n">Cal</span><span class="o">.</span><span class="n">calendar</span><span class="p">(</span><span class="n">start_time</span><span class="p">,</span> <span class="n">end_time</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">future</span><span class="o">=</span><span class="n">future</span><span class="p">)</span>
+<span class="n">File</span> <span class="s2">"e:\code\python\microsoft\qlib_latest\qlib\qlib\data\data.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">798</span><span class="p">,</span> <span class="ow">in</span> <span class="n">calendar</span>
+  <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span>
+<span class="n">File</span> <span class="s2">"e:\code\python\microsoft\qlib_latest\qlib\qlib\data\client.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">101</span><span class="p">,</span> <span class="ow">in</span> <span class="n">send_request</span>
+  <span class="bp">self</span><span class="o">.</span><span class="n">sio</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">request_type</span> <span class="o">+</span> <span class="s2">"_request"</span><span class="p">,</span> <span class="n">request_content</span><span class="p">)</span>
+<span class="n">File</span> <span class="s2">"G:</span><span class="se">\a</span><span class="s2">pps\miniconda\envs\qlib\lib\site-packages\socketio\client.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">263</span><span class="p">,</span> <span class="ow">in</span> <span class="n">emit</span>
+  <span class="bp">self</span><span class="o">.</span><span class="n">_send_packet</span><span class="p">(</span><span class="n">packet</span><span class="o">.</span><span class="n">Packet</span><span class="p">(</span><span class="n">packet</span><span class="o">.</span><span class="n">EVENT</span><span class="p">,</span> <span class="n">namespace</span><span class="o">=</span><span class="n">namespace</span><span class="p">,</span>
+<span class="n">File</span> <span class="s2">"G:</span><span class="se">\a</span><span class="s2">pps\miniconda\envs\qlib\lib\site-packages\socketio\client.py"</span><span class="p">,</span> <span class="n">line</span> <span class="mi">339</span><span class="p">,</span> <span class="ow">in</span> <span class="n">_send_packet</span>
+  <span class="bp">self</span><span class="o">.</span><span class="n">eio</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">ep</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="n">binary</span><span class="p">)</span>
+<span class="ne">TypeError</span><span class="p">:</span> <span class="n">send</span><span class="p">()</span> <span class="n">got</span> <span class="n">an</span> <span class="n">unexpected</span> <span class="n">keyword</span> <span class="n">argument</span> <span class="s1">'binary'</span>
+</pre></div>
+</div>
+<ul>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">python-engineio</span></code> version needs to be compatible with the <code class="docutils literal notranslate"><span class="pre">python-socketio</span></code> version, reference: <a class="reference external" href="https://github.com/miguelgrinberg/python-socketio#version-compatibility">https://github.com/miguelgrinberg/python-socketio#version-compatibility</a></p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>python-engineio<span class="o">==</span>&lt;compatible<span class="w"> </span>python-socketio<span class="w"> </span>version&gt;
+<span class="c1"># or</span>
+pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>python-socketio<span class="o">==</span><span class="m">3</span>.1.2<span class="w"> </span>python-engineio<span class="o">==</span><span class="m">3</span>.13.2
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</section>
+</section>
+</section>
+</div>
+</body>
+</html>

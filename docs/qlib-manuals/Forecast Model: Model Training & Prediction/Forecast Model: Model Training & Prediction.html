@@ -1,0 +1,176 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="forecast-model-model-training-prediction">
+<span id="model"></span><h1>Forecast Model: Model Training &amp; Prediction<a class="headerlink" href="#forecast-model-model-training-prediction" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code> is designed to make the <cite>prediction score</cite> about stocks. Users can use the <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code> in an automatic workflow by <code class="docutils literal notranslate"><span class="pre">qrun</span></code>, please refer to <a class="reference external" href="workflow.html">Workflow: Workflow Management</a>.</p>
+<p>Because the components in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> are designed in a loosely-coupled way, <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code> can be used as an independent module also.</p>
+</section>
+<section id="base-class-interface">
+<h2>Base Class &amp; Interface<a class="headerlink" href="#base-class-interface" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> provides a base class <a class="reference external" href="../reference/api.html#module-qlib.model.base">qlib.model.base.Model</a> from which all models should inherit.</p>
+<p>The base class provides the following interfaces:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qlib.model.base.</span></span><span class="sig-name descname"><span class="pre">Model</span></span></dt>
+<dd><p>Learnable Models</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reweighter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Reweighter</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Learn model from the base model</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The attribute names of learned model should <cite>not</cite> start with ‘_’. So that the model could be
+dumped to disk.</p>
+</div>
+<p>The following code example shows how to retrieve <cite>x_train</cite>, <cite>y_train</cite> and <cite>w_train</cite> from the <cite>dataset</cite>:</p>
+<blockquote>
+<div><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># get features and labels</span>
+<span class="n">df_train</span><span class="p">,</span> <span class="n">df_valid</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span>
+    <span class="p">[</span><span class="s2">"train"</span><span class="p">,</span> <span class="s2">"valid"</span><span class="p">],</span> <span class="n">col_set</span><span class="o">=</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">],</span> <span class="n">data_key</span><span class="o">=</span><span class="n">DataHandlerLP</span><span class="o">.</span><span class="n">DK_L</span>
+<span class="p">)</span>
+<span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span> <span class="o">=</span> <span class="n">df_train</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">],</span> <span class="n">df_train</span><span class="p">[</span><span class="s2">"label"</span><span class="p">]</span>
+<span class="n">x_valid</span><span class="p">,</span> <span class="n">y_valid</span> <span class="o">=</span> <span class="n">df_valid</span><span class="p">[</span><span class="s2">"feature"</span><span class="p">],</span> <span class="n">df_valid</span><span class="p">[</span><span class="s2">"label"</span><span class="p">]</span>
+
+<span class="c1"># get weights</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">wdf_train</span><span class="p">,</span> <span class="n">wdf_valid</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare</span><span class="p">([</span><span class="s2">"train"</span><span class="p">,</span> <span class="s2">"valid"</span><span class="p">],</span> <span class="n">col_set</span><span class="o">=</span><span class="p">[</span><span class="s2">"weight"</span><span class="p">],</span>
+                                           <span class="n">data_key</span><span class="o">=</span><span class="n">DataHandlerLP</span><span class="o">.</span><span class="n">DK_L</span><span class="p">)</span>
+    <span class="n">w_train</span><span class="p">,</span> <span class="n">w_valid</span> <span class="o">=</span> <span class="n">wdf_train</span><span class="p">[</span><span class="s2">"weight"</span><span class="p">],</span> <span class="n">wdf_valid</span><span class="p">[</span><span class="s2">"weight"</span><span class="p">]</span>
+<span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">w_train</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">values</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">y_train</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">w_valid</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">y_valid</span><span class="o">.</span><span class="n">values</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">y_valid</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dataset</strong> (<a class="reference internal" href="../reference/api.html#qlib.data.dataset.__init__.Dataset" title="qlib.data.dataset.__init__.Dataset"><em>Dataset</em></a>) – dataset will generate the processed data from model training.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">segment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">slice</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'test'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">object</span></span></span></dt>
+<dd><p>give prediction given Dataset</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> (<a class="reference internal" href="../reference/api.html#qlib.data.dataset.__init__.Dataset" title="qlib.data.dataset.__init__.Dataset"><em>Dataset</em></a>) – dataset will generate the processed dataset from model training.</p></li>
+<li><p><strong>segment</strong> (<em>Text</em><em> or </em><em>slice</em>) – dataset will use this segment to prepare data. (default=test)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Prediction results with certain type such as <cite>pandas.Series</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> also provides a base class <a class="reference external" href="../reference/api.html#qlib.model.base.ModelFT">qlib.model.base.ModelFT</a>, which includes the method for finetuning the model.</p>
+<p>For other interfaces such as <cite>finetune</cite>, please refer to <a class="reference external" href="../reference/api.html#module-qlib.model.base">Model API</a>.</p>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code>’s <cite>Model Zoo</cite> includes models such as <code class="docutils literal notranslate"><span class="pre">LightGBM</span></code>, <code class="docutils literal notranslate"><span class="pre">MLP</span></code>, <code class="docutils literal notranslate"><span class="pre">LSTM</span></code>, etc.. These models are treated as the baselines of <code class="docutils literal notranslate"><span class="pre">Forecast</span> <span class="pre">Model</span></code>. The following steps show how to run`` LightGBM`` as an independent module.</p>
+<ul>
+<li><p>Initialize <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> with <cite>qlib.init</cite> first, please refer to <a class="reference external" href="../start/initialization.html">Initialization</a>.</p></li>
+<li><dl>
+<dt>Run the following code to get the <cite>prediction score</cite> <cite>pred_score</cite></dt><dd><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.model.gbdt</span><span class="w"> </span><span class="kn">import</span> <span class="n">LGBModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.contrib.data.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">Alpha158</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">init_instance_by_config</span><span class="p">,</span> <span class="n">flatten_dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">R</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qlib.workflow.record_temp</span><span class="w"> </span><span class="kn">import</span> <span class="n">SignalRecord</span><span class="p">,</span> <span class="n">PortAnaRecord</span>
+
+<span class="n">market</span> <span class="o">=</span> <span class="s2">"csi300"</span>
+<span class="n">benchmark</span> <span class="o">=</span> <span class="s2">"SH000300"</span>
+
+<span class="n">data_handler_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"start_time"</span><span class="p">:</span> <span class="s2">"2008-01-01"</span><span class="p">,</span>
+    <span class="s2">"end_time"</span><span class="p">:</span> <span class="s2">"2020-08-01"</span><span class="p">,</span>
+    <span class="s2">"fit_start_time"</span><span class="p">:</span> <span class="s2">"2008-01-01"</span><span class="p">,</span>
+    <span class="s2">"fit_end_time"</span><span class="p">:</span> <span class="s2">"2014-12-31"</span><span class="p">,</span>
+    <span class="s2">"instruments"</span><span class="p">:</span> <span class="n">market</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">task</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"model"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"class"</span><span class="p">:</span> <span class="s2">"LGBModel"</span><span class="p">,</span>
+        <span class="s2">"module_path"</span><span class="p">:</span> <span class="s2">"qlib.contrib.model.gbdt"</span><span class="p">,</span>
+        <span class="s2">"kwargs"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"loss"</span><span class="p">:</span> <span class="s2">"mse"</span><span class="p">,</span>
+            <span class="s2">"colsample_bytree"</span><span class="p">:</span> <span class="mf">0.8879</span><span class="p">,</span>
+            <span class="s2">"learning_rate"</span><span class="p">:</span> <span class="mf">0.0421</span><span class="p">,</span>
+            <span class="s2">"subsample"</span><span class="p">:</span> <span class="mf">0.8789</span><span class="p">,</span>
+            <span class="s2">"lambda_l1"</span><span class="p">:</span> <span class="mf">205.6999</span><span class="p">,</span>
+            <span class="s2">"lambda_l2"</span><span class="p">:</span> <span class="mf">580.9768</span><span class="p">,</span>
+            <span class="s2">"max_depth"</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+            <span class="s2">"num_leaves"</span><span class="p">:</span> <span class="mi">210</span><span class="p">,</span>
+            <span class="s2">"num_threads"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="s2">"dataset"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">"class"</span><span class="p">:</span> <span class="s2">"DatasetH"</span><span class="p">,</span>
+        <span class="s2">"module_path"</span><span class="p">:</span> <span class="s2">"qlib.data.dataset"</span><span class="p">,</span>
+        <span class="s2">"kwargs"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"handler"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"class"</span><span class="p">:</span> <span class="s2">"Alpha158"</span><span class="p">,</span>
+                <span class="s2">"module_path"</span><span class="p">:</span> <span class="s2">"qlib.contrib.data.handler"</span><span class="p">,</span>
+                <span class="s2">"kwargs"</span><span class="p">:</span> <span class="n">data_handler_config</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">"segments"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"train"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2008-01-01"</span><span class="p">,</span> <span class="s2">"2014-12-31"</span><span class="p">),</span>
+                <span class="s2">"valid"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2015-01-01"</span><span class="p">,</span> <span class="s2">"2016-12-31"</span><span class="p">),</span>
+                <span class="s2">"test"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"2017-01-01"</span><span class="p">,</span> <span class="s2">"2020-08-01"</span><span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+<span class="c1"># model initialization</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">init_instance_by_config</span><span class="p">(</span><span class="n">task</span><span class="p">[</span><span class="s2">"model"</span><span class="p">])</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">init_instance_by_config</span><span class="p">(</span><span class="n">task</span><span class="p">[</span><span class="s2">"dataset"</span><span class="p">])</span>
+
+<span class="c1"># start exp</span>
+<span class="k">with</span> <span class="n">R</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">experiment_name</span><span class="o">=</span><span class="s2">"workflow"</span><span class="p">):</span>
+    <span class="c1"># train</span>
+    <span class="n">R</span><span class="o">.</span><span class="n">log_params</span><span class="p">(</span><span class="o">**</span><span class="n">flatten_dict</span><span class="p">(</span><span class="n">task</span><span class="p">))</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+
+    <span class="c1"># prediction</span>
+    <span class="n">recorder</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">get_recorder</span><span class="p">()</span>
+    <span class="n">sr</span> <span class="o">=</span> <span class="n">SignalRecord</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">recorder</span><span class="p">)</span>
+    <span class="n">sr</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><cite>Alpha158</cite> is the data handler provided by <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, please refer to <a class="reference external" href="data.html#data-handler">Data Handler</a>.
+<cite>SignalRecord</cite> is the <cite>Record Template</cite> in <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, please refer to <a class="reference external" href="recorder.html#record-template">Workflow</a>.</p>
+</div>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Also, the above example has been given in <code class="docutils literal notranslate"><span class="pre">examples/train_backtest_analyze.ipynb</span></code>.
+Technically, the meaning of the model prediction depends on the label setting designed by user.
+By default, the meaning of the score is normally the rating of the instruments by the forecasting model. The higher the score, the more profit the instruments.</p>
+</section>
+<section id="custom-model">
+<h2>Custom Model<a class="headerlink" href="#custom-model" title="Permalink to this heading"></a></h2>
+<p>Qlib supports custom models. If users are interested in customizing their own models and integrating the models into <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, please refer to <a class="reference external" href="../start/integration.html">Custom Model Integration</a>.</p>
+</section>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this heading"></a></h2>
+<p>Please refer to <a class="reference external" href="../reference/api.html#module-qlib.model.base">Model API</a>.</p>
+</section>
+</section>
+</div>
+</body>
+</html>

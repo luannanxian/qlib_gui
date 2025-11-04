@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="p-oint-i-n-t-ime-database">
+<span id="pit"></span><h1>(P)oint-(I)n-(T)ime Database<a class="headerlink" href="#p-oint-i-n-t-ime-database" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p>Point-in-time data is a very important consideration when performing any sort of historical market analysis.</p>
+<p>For example, let’s say we are backtesting a trading strategy and we are using the past five years of historical data as our input.
+Our model is assumed to trade once a day, at the market close, and we’ll say we are calculating the trading signal for 1 January 2020 in our backtest. At that point, we should only have data for 1 January 2020, 31 December 2019, 30 December 2019 etc.</p>
+<p>In financial data (especially financial reports), the same piece of data may be amended for multiple times overtime.  If we only use the latest version for historical backtesting, data leakage will happen.
+Point-in-time database is designed for solving this problem to make sure user get the right version of data at any historical timestamp. It will keep the performance of online trading and historical backtesting the same.</p>
+</section>
+<section id="data-preparation">
+<h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this heading"></a></h2>
+<p>Qlib provides a crawler to help users to download financial data and then a converter to dump the data in Qlib format.
+Please follow <a class="reference external" href="https://github.com/microsoft/qlib/tree/main/scripts/data_collector/pit/">scripts/data_collector/pit/README.md</a> to download and convert data.
+Besides, you can find some additional usage examples there.</p>
+</section>
+<section id="file-based-design-for-pit-data">
+<h2>File-based design for PIT data<a class="headerlink" href="#file-based-design-for-pit-data" title="Permalink to this heading"></a></h2>
+<p>Qlib provides a file-based storage for PIT data.</p>
+<p>For each feature, it contains 4 columns, i.e. date, period, value, _next.
+Each row corresponds to a statement.</p>
+<p>The meaning of each feature with filename like <cite>XXX_a.data</cite>:</p>
+<ul class="simple">
+<li><p><cite>date</cite>: the statement’s date of publication.</p></li>
+<li><dl class="simple">
+<dt><cite>period</cite>: the period of the statement. (e.g. it will be quarterly frequency in most of the markets)</dt><dd><ul>
+<li><p>If it is an annual period, it will be an integer corresponding to the year</p></li>
+<li><p>If it is an quarterly  periods, it will be an integer like <cite>&lt;year&gt;&lt;index of quarter&gt;</cite>.  The last two decimal digits represents the index of quarter. Others represent the year.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><cite>value</cite>: the described value</p></li>
+<li><p><cite>_next</cite>: the byte index of the next occurance of the field.</p></li>
+</ul>
+<p>Besides the feature data, an index <cite>XXX_a.index</cite> is included to speed up the querying performance</p>
+<p>The statements are soted by the <cite>date</cite> in ascending order from the beginning of the file.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># the data format from XXXX.data</span>
+<span class="n">array</span><span class="p">([(</span><span class="mi">20070428</span><span class="p">,</span> <span class="mi">200701</span><span class="p">,</span> <span class="mf">0.090219</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20070817</span><span class="p">,</span> <span class="mi">200702</span><span class="p">,</span> <span class="mf">0.13933</span>   <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20071023</span><span class="p">,</span> <span class="mi">200703</span><span class="p">,</span> <span class="mf">0.24586301</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20080301</span><span class="p">,</span> <span class="mi">200704</span><span class="p">,</span> <span class="mf">0.3479</span>    <span class="p">,</span>         <span class="mi">80</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20080313</span><span class="p">,</span> <span class="mi">200704</span><span class="p">,</span> <span class="mf">0.395989</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20080422</span><span class="p">,</span> <span class="mi">200801</span><span class="p">,</span> <span class="mf">0.100724</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20080828</span><span class="p">,</span> <span class="mi">200802</span><span class="p">,</span> <span class="mf">0.24996801</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20081027</span><span class="p">,</span> <span class="mi">200803</span><span class="p">,</span> <span class="mf">0.33412001</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20090325</span><span class="p">,</span> <span class="mi">200804</span><span class="p">,</span> <span class="mf">0.39011699</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20090421</span><span class="p">,</span> <span class="mi">200901</span><span class="p">,</span> <span class="mf">0.102675</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20090807</span><span class="p">,</span> <span class="mi">200902</span><span class="p">,</span> <span class="mf">0.230712</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20091024</span><span class="p">,</span> <span class="mi">200903</span><span class="p">,</span> <span class="mf">0.30072999</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20100402</span><span class="p">,</span> <span class="mi">200904</span><span class="p">,</span> <span class="mf">0.33546099</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20100426</span><span class="p">,</span> <span class="mi">201001</span><span class="p">,</span> <span class="mf">0.083825</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20100812</span><span class="p">,</span> <span class="mi">201002</span><span class="p">,</span> <span class="mf">0.200545</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20101029</span><span class="p">,</span> <span class="mi">201003</span><span class="p">,</span> <span class="mf">0.260986</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20110321</span><span class="p">,</span> <span class="mi">201004</span><span class="p">,</span> <span class="mf">0.30739301</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20110423</span><span class="p">,</span> <span class="mi">201101</span><span class="p">,</span> <span class="mf">0.097411</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20110831</span><span class="p">,</span> <span class="mi">201102</span><span class="p">,</span> <span class="mf">0.24825101</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20111018</span><span class="p">,</span> <span class="mi">201103</span><span class="p">,</span> <span class="mf">0.318919</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20120323</span><span class="p">,</span> <span class="mi">201104</span><span class="p">,</span> <span class="mf">0.4039</span>    <span class="p">,</span>        <span class="mi">420</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20120411</span><span class="p">,</span> <span class="mi">201104</span><span class="p">,</span> <span class="mf">0.403925</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20120426</span><span class="p">,</span> <span class="mi">201201</span><span class="p">,</span> <span class="mf">0.112148</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20120810</span><span class="p">,</span> <span class="mi">201202</span><span class="p">,</span> <span class="mf">0.26484701</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20121026</span><span class="p">,</span> <span class="mi">201203</span><span class="p">,</span> <span class="mf">0.370487</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20130329</span><span class="p">,</span> <span class="mi">201204</span><span class="p">,</span> <span class="mf">0.45004699</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20130418</span><span class="p">,</span> <span class="mi">201301</span><span class="p">,</span> <span class="mf">0.099958</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20130831</span><span class="p">,</span> <span class="mi">201302</span><span class="p">,</span> <span class="mf">0.21044201</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20131016</span><span class="p">,</span> <span class="mi">201303</span><span class="p">,</span> <span class="mf">0.30454299</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20140325</span><span class="p">,</span> <span class="mi">201304</span><span class="p">,</span> <span class="mf">0.394328</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20140425</span><span class="p">,</span> <span class="mi">201401</span><span class="p">,</span> <span class="mf">0.083217</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20140829</span><span class="p">,</span> <span class="mi">201402</span><span class="p">,</span> <span class="mf">0.16450299</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20141030</span><span class="p">,</span> <span class="mi">201403</span><span class="p">,</span> <span class="mf">0.23408499</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20150421</span><span class="p">,</span> <span class="mi">201404</span><span class="p">,</span> <span class="mf">0.319612</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20150421</span><span class="p">,</span> <span class="mi">201501</span><span class="p">,</span> <span class="mf">0.078494</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20150828</span><span class="p">,</span> <span class="mi">201502</span><span class="p">,</span> <span class="mf">0.137504</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20151023</span><span class="p">,</span> <span class="mi">201503</span><span class="p">,</span> <span class="mf">0.201709</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20160324</span><span class="p">,</span> <span class="mi">201504</span><span class="p">,</span> <span class="mf">0.26420501</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20160421</span><span class="p">,</span> <span class="mi">201601</span><span class="p">,</span> <span class="mf">0.073664</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20160827</span><span class="p">,</span> <span class="mi">201602</span><span class="p">,</span> <span class="mf">0.136576</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20161029</span><span class="p">,</span> <span class="mi">201603</span><span class="p">,</span> <span class="mf">0.188062</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20170415</span><span class="p">,</span> <span class="mi">201604</span><span class="p">,</span> <span class="mf">0.244385</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20170425</span><span class="p">,</span> <span class="mi">201701</span><span class="p">,</span> <span class="mf">0.080614</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20170728</span><span class="p">,</span> <span class="mi">201702</span><span class="p">,</span> <span class="mf">0.15151</span>   <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20171026</span><span class="p">,</span> <span class="mi">201703</span><span class="p">,</span> <span class="mf">0.25416601</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20180328</span><span class="p">,</span> <span class="mi">201704</span><span class="p">,</span> <span class="mf">0.32954201</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20180428</span><span class="p">,</span> <span class="mi">201801</span><span class="p">,</span> <span class="mf">0.088887</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20180802</span><span class="p">,</span> <span class="mi">201802</span><span class="p">,</span> <span class="mf">0.170563</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20181029</span><span class="p">,</span> <span class="mi">201803</span><span class="p">,</span> <span class="mf">0.25522</span>   <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20190329</span><span class="p">,</span> <span class="mi">201804</span><span class="p">,</span> <span class="mf">0.34464401</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20190425</span><span class="p">,</span> <span class="mi">201901</span><span class="p">,</span> <span class="mf">0.094737</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20190713</span><span class="p">,</span> <span class="mi">201902</span><span class="p">,</span> <span class="mf">0.</span>        <span class="p">,</span>       <span class="mi">1040</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20190718</span><span class="p">,</span> <span class="mi">201902</span><span class="p">,</span> <span class="mf">0.175322</span>  <span class="p">,</span> <span class="mi">4294967295</span><span class="p">),</span>
+       <span class="p">(</span><span class="mi">20191016</span><span class="p">,</span> <span class="mi">201903</span><span class="p">,</span> <span class="mf">0.25581899</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">)],</span>
+      <span class="n">dtype</span><span class="o">=</span><span class="p">[(</span><span class="s1">'date'</span><span class="p">,</span> <span class="s1">'&lt;u4'</span><span class="p">),</span> <span class="p">(</span><span class="s1">'period'</span><span class="p">,</span> <span class="s1">'&lt;u4'</span><span class="p">),</span> <span class="p">(</span><span class="s1">'value'</span><span class="p">,</span> <span class="s1">'&lt;f8'</span><span class="p">),</span> <span class="p">(</span><span class="s1">'_next'</span><span class="p">,</span> <span class="s1">'&lt;u4'</span><span class="p">)])</span>
+<span class="c1"># - each row contains 20 byte</span>
+
+
+<span class="c1"># The data format from XXXX.index.  It consists of two parts</span>
+<span class="c1"># 1) the start index of the data. So the first part of the info will be like</span>
+<span class="mi">2007</span>
+<span class="c1"># 2) the remain index data will be like information below</span>
+<span class="c1">#    - The data indicate the **byte index** of first data update of a period.</span>
+<span class="c1">#    - e.g. Because the info at both byte 80 and 100 corresponds to 200704. The byte index of first occurance (i.e. 100) is recorded in the data.</span>
+<span class="n">array</span><span class="p">([</span>         <span class="mi">0</span><span class="p">,</span>         <span class="mi">20</span><span class="p">,</span>         <span class="mi">40</span><span class="p">,</span>         <span class="mi">60</span><span class="p">,</span>        <span class="mi">100</span><span class="p">,</span>
+              <span class="mi">120</span><span class="p">,</span>        <span class="mi">140</span><span class="p">,</span>        <span class="mi">160</span><span class="p">,</span>        <span class="mi">180</span><span class="p">,</span>        <span class="mi">200</span><span class="p">,</span>
+              <span class="mi">220</span><span class="p">,</span>        <span class="mi">240</span><span class="p">,</span>        <span class="mi">260</span><span class="p">,</span>        <span class="mi">280</span><span class="p">,</span>        <span class="mi">300</span><span class="p">,</span>
+              <span class="mi">320</span><span class="p">,</span>        <span class="mi">340</span><span class="p">,</span>        <span class="mi">360</span><span class="p">,</span>        <span class="mi">380</span><span class="p">,</span>        <span class="mi">400</span><span class="p">,</span>
+              <span class="mi">440</span><span class="p">,</span>        <span class="mi">460</span><span class="p">,</span>        <span class="mi">480</span><span class="p">,</span>        <span class="mi">500</span><span class="p">,</span>        <span class="mi">520</span><span class="p">,</span>
+              <span class="mi">540</span><span class="p">,</span>        <span class="mi">560</span><span class="p">,</span>        <span class="mi">580</span><span class="p">,</span>        <span class="mi">600</span><span class="p">,</span>        <span class="mi">620</span><span class="p">,</span>
+              <span class="mi">640</span><span class="p">,</span>        <span class="mi">660</span><span class="p">,</span>        <span class="mi">680</span><span class="p">,</span>        <span class="mi">700</span><span class="p">,</span>        <span class="mi">720</span><span class="p">,</span>
+              <span class="mi">740</span><span class="p">,</span>        <span class="mi">760</span><span class="p">,</span>        <span class="mi">780</span><span class="p">,</span>        <span class="mi">800</span><span class="p">,</span>        <span class="mi">820</span><span class="p">,</span>
+              <span class="mi">840</span><span class="p">,</span>        <span class="mi">860</span><span class="p">,</span>        <span class="mi">880</span><span class="p">,</span>        <span class="mi">900</span><span class="p">,</span>        <span class="mi">920</span><span class="p">,</span>
+              <span class="mi">940</span><span class="p">,</span>        <span class="mi">960</span><span class="p">,</span>        <span class="mi">980</span><span class="p">,</span>       <span class="mi">1000</span><span class="p">,</span>       <span class="mi">1020</span><span class="p">,</span>
+             <span class="mi">1060</span><span class="p">,</span> <span class="mi">4294967295</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">uint32</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Known limitations:</p>
+<ul class="simple">
+<li><p>Currently, the PIT database is designed for quarterly or annually factors, which can handle fundamental data of financial reports in most markets.</p></li>
+<li><p>Qlib leverage the file name to identify the type of the data. File with name like <cite>XXX_q.data</cite> corresponds to quarterly data. File with name like <cite>XXX_a.data</cite> corresponds to annual data.</p></li>
+<li><p>The caclulation of PIT is not performed in the optimal way. There is great potential to boost the performance of PIT data calcuation.</p></li>
+</ul>
+</section>
+</section>
+</div>
+</body>
+</html>

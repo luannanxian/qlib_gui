@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="qlib-quantitative-platform">
+<h1><code class="docutils literal notranslate"><span class="pre">Qlib</span></code>: Quantitative Platform<a class="headerlink" href="#qlib-quantitative-platform" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<img alt="../_images/white_bg_rec%2Bword.png" class="align-center" src="../_images/white_bg_rec%2Bword.png"/>
+<p><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> is an AI-oriented quantitative investment platform, which aims to realize the potential, empower the research, and create the value of AI technologies in quantitative investment.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, users can easily try their ideas to create better Quant investment strategies.</p>
+</section>
+<section id="framework">
+<h2>Framework<a class="headerlink" href="#framework" title="Permalink to this heading"></a></h2>
+<img alt="../_images/framework.svg" class="align-center" src="../_images/framework.svg"/><p>At the module level, Qlib is a platform that consists of above components. The components are designed as loose-coupled modules and each component could be used stand-alone.</p>
+<p>This framework may be intimidating for new users to Qlib. It tries to accurately include a lot of details of Qlib’s design.
+For users new to Qlib, you can skip it first and read it later.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><cite>Infrastructure</cite> layer</p></td>
+<td><p><cite>Infrastructure</cite> layer provides underlying support for Quant research.
+<cite>DataServer</cite> provides high-performance infrastructure for users to manage
+and retrieve raw data. <cite>Trainer</cite> provides flexible interface to control
+the training process of models which enable algorithms controlling the
+training process.</p></td>
+</tr>
+<tr class="row-odd"><td><p><cite>Learning Framework</cite> layer</p></td>
+<td><p>The <cite>Forecast Model</cite> and <cite>Trading Agent</cite> are trainable. They are trained
+based on the <cite>Learning Framework</cite> layer and then applied to multiple scenarios
+in <cite>Workflow</cite> layer. The supported learning paradigms can be categorized into
+reinforcement learning and supervised learning.  The learning framework
+leverages the <cite>Workflow</cite> layer as well(e.g. sharing <cite>Information Extractor</cite>,
+creating environments based on <cite>Execution Env</cite>).</p></td>
+</tr>
+<tr class="row-even"><td><p><cite>Workflow</cite> layer</p></td>
+<td><p><cite>Workflow</cite> layer covers the whole workflow of quantitative investment.
+Both supervised-learning-based strategies and RL-based Strategies
+are supported.
+<cite>Information Extractor</cite> extracts data for models. <cite>Forecast Model</cite> focuses
+on producing all kinds of forecast signals (e.g. <em>alpha</em>, risk) for other
+modules.  With these signals <cite>Decision Generator</cite> will generate the target
+trading decisions(i.e. portfolio, orders)
+If RL-based Strategies are adopted, the <cite>Policy</cite> is learned in a end-to-end way,
+the trading decisions are generated directly.
+Decisions will be executed by <cite>Execution Env</cite>
+(i.e. the trading market).  There may be multiple levels of <cite>Strategy</cite>
+and <cite>Executor</cite> (e.g. an <em>order executor trading strategy and intraday order executor</em>
+could behave like an interday trading loop and be nested in
+<em>daily portfolio management trading strategy and interday trading executor</em>
+trading loop)</p></td>
+</tr>
+<tr class="row-odd"><td><p><cite>Interface</cite> layer</p></td>
+<td><p><cite>Interface</cite> layer tries to present a user-friendly interface for the underlying
+system. <cite>Analyser</cite> module will provide users detailed analysis reports of
+forecasting signals, portfolios and execution results</p></td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><p>The modules with hand-drawn style are under development and will be released in the future.</p></li>
+<li><p>The modules with dashed borders are highly user-customizable and extendible.</p></li>
+</ul>
+<p>(p.s. framework image is created with <a class="reference external" href="https://draw.io/">https://draw.io/</a>)</p>
+</section>
+</section>
+</div>
+</body>
+</html>

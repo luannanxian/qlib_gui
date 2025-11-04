@@ -1,0 +1,265 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this heading"></a></h1>
+<p>Here you can see the full list of changes between each QLib release.</p>
+<section id="version-0-1-0">
+<h2>Version 0.1.0<a class="headerlink" href="#version-0-1-0" title="Permalink to this heading"></a></h2>
+<p>This is the initial release of QLib library.</p>
+</section>
+<section id="version-0-1-1">
+<h2>Version 0.1.1<a class="headerlink" href="#version-0-1-1" title="Permalink to this heading"></a></h2>
+<p>Performance optimize. Add more features and operators.</p>
+</section>
+<section id="version-0-1-2">
+<h2>Version 0.1.2<a class="headerlink" href="#version-0-1-2" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Support operator syntax. Now <code class="docutils literal notranslate"><span class="pre">High()</span> <span class="pre">-</span> <span class="pre">Low()</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">Sub(High(),</span> <span class="pre">Low())</span></code>.</p></li>
+<li><p>Add more technical indicators.</p></li>
+</ul>
+</section>
+<section id="version-0-1-3">
+<h2>Version 0.1.3<a class="headerlink" href="#version-0-1-3" title="Permalink to this heading"></a></h2>
+<p>Bug fix and add instruments filtering mechanism.</p>
+</section>
+<section id="version-0-2-0">
+<h2>Version 0.2.0<a class="headerlink" href="#version-0-2-0" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Redesign <code class="docutils literal notranslate"><span class="pre">LocalProvider</span></code> database format for performance improvement.</p></li>
+<li><p>Support load features as string fields.</p></li>
+<li><p>Add scripts for database construction.</p></li>
+<li><p>More operators and technical indicators.</p></li>
+</ul>
+</section>
+<section id="version-0-2-1">
+<h2>Version 0.2.1<a class="headerlink" href="#version-0-2-1" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Support registering user-defined <code class="docutils literal notranslate"><span class="pre">Provider</span></code>.</p></li>
+<li><p>Support use operators in string format, e.g. <code class="docutils literal notranslate"><span class="pre">['Ref($close,</span> <span class="pre">1)']</span></code> is valid field format.</p></li>
+<li><p>Support dynamic fields in <code class="docutils literal notranslate"><span class="pre">$some_field</span></code> format. And existing fields like <code class="docutils literal notranslate"><span class="pre">Close()</span></code> may be deprecated in the future.</p></li>
+</ul>
+</section>
+<section id="version-0-2-2">
+<h2>Version 0.2.2<a class="headerlink" href="#version-0-2-2" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">disk_cache</span></code> for reusing features (enabled by default).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">qlib.contrib</span></code> for experimental model construction and evaluation.</p></li>
+</ul>
+</section>
+<section id="version-0-2-3">
+<h2>Version 0.2.3<a class="headerlink" href="#version-0-2-3" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">backtest</span></code> module</p></li>
+<li><p>Decoupling the Strategy, Account, Position, Exchange from the backtest module</p></li>
+</ul>
+</section>
+<section id="version-0-2-4">
+<h2>Version 0.2.4<a class="headerlink" href="#version-0-2-4" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">profit</span> <span class="pre">attribution</span></code> module</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">rick_control</span></code> and <code class="docutils literal notranslate"><span class="pre">cost_control</span></code> strategies</p></li>
+</ul>
+</section>
+<section id="version-0-3-0">
+<h2>Version 0.3.0<a class="headerlink" href="#version-0-3-0" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">estimator</span></code> module</p></li>
+</ul>
+</section>
+<section id="version-0-3-1">
+<h2>Version 0.3.1<a class="headerlink" href="#version-0-3-1" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">filter</span></code> module</p></li>
+</ul>
+</section>
+<section id="version-0-3-2">
+<h2>Version 0.3.2<a class="headerlink" href="#version-0-3-2" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add real price trading, if the <code class="docutils literal notranslate"><span class="pre">factor</span></code> field in the data set is incomplete, use <code class="docutils literal notranslate"><span class="pre">adj_price</span></code> trading</p></li>
+<li><p>Refactor <code class="docutils literal notranslate"><span class="pre">handler</span></code> <code class="docutils literal notranslate"><span class="pre">launcher</span></code> <code class="docutils literal notranslate"><span class="pre">trainer</span></code> code</p></li>
+<li><p>Support <code class="docutils literal notranslate"><span class="pre">backtest</span></code> configuration parameters in the configuration file</p></li>
+<li><p>Fix bug in position <code class="docutils literal notranslate"><span class="pre">amount</span></code> is 0</p></li>
+<li><p>Fix bug of <code class="docutils literal notranslate"><span class="pre">filter</span></code> module</p></li>
+</ul>
+</section>
+<section id="version-0-3-3">
+<h2>Version 0.3.3<a class="headerlink" href="#version-0-3-3" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Fix bug of <code class="docutils literal notranslate"><span class="pre">filter</span></code> module</p></li>
+</ul>
+</section>
+<section id="version-0-3-4">
+<h2>Version 0.3.4<a class="headerlink" href="#version-0-3-4" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Support for <code class="docutils literal notranslate"><span class="pre">finetune</span> <span class="pre">model</span></code></p></li>
+<li><p>Refactor <code class="docutils literal notranslate"><span class="pre">fetcher</span></code> code</p></li>
+</ul>
+</section>
+<section id="version-0-3-5">
+<h2>Version 0.3.5<a class="headerlink" href="#version-0-3-5" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Support multi-label training, you can provide multiple label in <code class="docutils literal notranslate"><span class="pre">handler</span></code>. (But LightGBM doesn’t support due to the algorithm itself)</p></li>
+<li><p>Refactor <code class="docutils literal notranslate"><span class="pre">handler</span></code> code, dataset.py is no longer used, and you can deploy your own labels and features in <code class="docutils literal notranslate"><span class="pre">feature_label_config</span></code></p></li>
+<li><p>Handler only offer DataFrame. Also, <code class="docutils literal notranslate"><span class="pre">trainer</span></code> and model.py only receive DataFrame</p></li>
+<li><p>Change <code class="docutils literal notranslate"><span class="pre">split_rolling_data</span></code>, we roll the data on market calendar now, not on normal date</p></li>
+<li><p>Move some date config from <code class="docutils literal notranslate"><span class="pre">handler</span></code> to <code class="docutils literal notranslate"><span class="pre">trainer</span></code></p></li>
+</ul>
+</section>
+<section id="version-0-4-0">
+<h2>Version 0.4.0<a class="headerlink" href="#version-0-4-0" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add <cite>data</cite> package that holds all data-related codes</p></li>
+<li><p>Reform the data provider structure</p></li>
+<li><p>Create a server for data centralized management <a class="reference external" href="https://amc-msra.visualstudio.com/trading-algo/_git/qlib-server">qlib-server</a></p></li>
+<li><p>Add a <cite>ClientProvider</cite> to work with server</p></li>
+<li><p>Add a pluggable cache mechanism</p></li>
+<li><p>Add a recursive backtracking algorithm to inspect the furthest reference date for an expression</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">D.instruments</span></code> function does not support <code class="docutils literal notranslate"><span class="pre">start_time</span></code>, <code class="docutils literal notranslate"><span class="pre">end_time</span></code>, and <code class="docutils literal notranslate"><span class="pre">as_list</span></code> parameters, if you want to get the results of previous versions of <code class="docutils literal notranslate"><span class="pre">D.instruments</span></code>, you can do this:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">qlib.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">D</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">instruments</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">instruments</span><span class="p">(</span><span class="n">market</span><span class="o">=</span><span class="s1">'csi500'</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">D</span><span class="o">.</span><span class="n">list_instruments</span><span class="p">(</span><span class="n">instruments</span><span class="o">=</span><span class="n">instruments</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="s1">'2015-01-01'</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="s1">'2016-02-15'</span><span class="p">,</span> <span class="n">as_list</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="version-0-4-1">
+<h2>Version 0.4.1<a class="headerlink" href="#version-0-4-1" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Add support Windows</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">instruments</span></code> type bug</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">features</span></code> is empty bug(It will cause failure in updating)</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">cache</span></code> lock and update bug</p></li>
+<li><p>Fix use the same cache for the same field (the original space will add a new cache)</p></li>
+<li><p>Change “logger handler” from config</p></li>
+<li><p>Change model load support 0.4.0 later</p></li>
+<li><p>The default value of the <code class="docutils literal notranslate"><span class="pre">method</span></code> parameter of <code class="docutils literal notranslate"><span class="pre">risk_analysis</span></code> function is changed from <strong>ci</strong> to <strong>si</strong></p></li>
+</ul>
+</section>
+<section id="version-0-4-2">
+<h2>Version 0.4.2<a class="headerlink" href="#version-0-4-2" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Refactor DataHandler</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">Alpha360</span></code> DataHandler</p></li>
+</ul>
+</section>
+<section id="version-0-4-3">
+<h2>Version 0.4.3<a class="headerlink" href="#version-0-4-3" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Implementing Online Inference and Trading Framework</p></li>
+<li><p>Refactoring The interfaces of backtest and strategy module.</p></li>
+</ul>
+</section>
+<section id="version-0-4-4">
+<h2>Version 0.4.4<a class="headerlink" href="#version-0-4-4" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Optimize cache generation performance</p></li>
+<li><p>Add report module</p></li>
+<li><p>Fix bug when using <code class="docutils literal notranslate"><span class="pre">ServerDatasetCache</span></code> offline.</p></li>
+<li><p>In the previous version of <code class="docutils literal notranslate"><span class="pre">long_short_backtest</span></code>, there is a case of <code class="docutils literal notranslate"><span class="pre">np.nan</span></code> in long_short. The current version <code class="docutils literal notranslate"><span class="pre">0.4.4</span></code> has been fixed, so <code class="docutils literal notranslate"><span class="pre">long_short_backtest</span></code> will be different from the previous version.</p></li>
+<li><p>In the <code class="docutils literal notranslate"><span class="pre">0.4.2</span></code> version of <code class="docutils literal notranslate"><span class="pre">risk_analysis</span></code> function, <code class="docutils literal notranslate"><span class="pre">N</span></code> is <code class="docutils literal notranslate"><span class="pre">250</span></code>, and <code class="docutils literal notranslate"><span class="pre">N</span></code> is <code class="docutils literal notranslate"><span class="pre">252</span></code> from <code class="docutils literal notranslate"><span class="pre">0.4.3</span></code>, so <code class="docutils literal notranslate"><span class="pre">0.4.2</span></code> is <code class="docutils literal notranslate"><span class="pre">0.002122</span></code> smaller than the <code class="docutils literal notranslate"><span class="pre">0.4.3</span></code> the backtest result is slightly different between <code class="docutils literal notranslate"><span class="pre">0.4.2</span></code> and <code class="docutils literal notranslate"><span class="pre">0.4.3</span></code>.</p></li>
+<li><dl class="simple">
+<dt>refactor the argument of backtest function.</dt><dd><ul>
+<li><p><strong>NOTE</strong>:
+- The default arguments of topk margin strategy is changed. Please pass the arguments explicitly if you want to get the same backtest result as previous version.
+- The TopkWeightStrategy is changed slightly. It will try to sell the stocks more than <code class="docutils literal notranslate"><span class="pre">topk</span></code>.  (The backtest result of TopkAmountStrategy remains the same)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>The margin ratio mechanism is supported in the Topk Margin strategies.</p></li>
+</ul>
+</section>
+<section id="version-0-4-5">
+<h2>Version 0.4.5<a class="headerlink" href="#version-0-4-5" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Add multi-kernel implementation for both client and server.</dt><dd><ul>
+<li><p>Support a new way to load data from client which skips dataset cache.</p></li>
+<li><p>Change the default dataset method from single kernel implementation to multi kernel implementation.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Accelerate the high frequency data reading by optimizing the relative modules.</p></li>
+<li><p>Support a new method to write config file by using dict.</p></li>
+</ul>
+</section>
+<section id="version-0-4-6">
+<h2>Version 0.4.6<a class="headerlink" href="#version-0-4-6" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Some bugs are fixed</dt><dd><ul>
+<li><p>The default config in <cite>Version 0.4.5</cite> is not friendly to daily frequency data.</p></li>
+<li><p>Backtest error in TopkWeightStrategy when <cite>WithInteract=True</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="version-0-5-0">
+<h2>Version 0.5.0<a class="headerlink" href="#version-0-5-0" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>First opensource version</dt><dd><ul>
+<li><p>Refine the docs, code</p></li>
+<li><p>Add baselines</p></li>
+<li><p>public data crawler</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="version-0-8-0">
+<h2>Version 0.8.0<a class="headerlink" href="#version-0-8-0" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>The backtest is greatly refactored.</dt><dd><ul>
+<li><p>Nested decision execution framework is supported</p></li>
+<li><dl class="simple">
+<dt>There are lots of changes for daily trading, it is hard to list all of them. But a few important changes could be noticed</dt><dd><ul>
+<li><dl class="simple">
+<dt>The trading limitation is more accurate;</dt><dd><ul>
+<li><p>In <a class="reference external" href="https://github.com/microsoft/qlib/blob/v0.7.2/qlib/contrib/backtest/exchange.py#L160">previous version</a>, longing and shorting actions share the same action.</p></li>
+<li><p>In <a class="reference external" href="https://github.com/microsoft/qlib/blob/7c31012b507a3823117bddcc693fc64899460b2a/qlib/backtest/exchange.py#L304">current version</a>, the trading limitation is different between logging and shorting action.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>The constant is different when calculating annualized metrics.</dt><dd><ul>
+<li><p><a class="reference external" href="https://github.com/microsoft/qlib/blob/7c31012b507a3823117bddcc693fc64899460b2a/qlib/contrib/evaluate.py#L42">Current version</a> uses more accurate constant than <a class="reference external" href="https://github.com/microsoft/qlib/blob/v0.7.2/qlib/contrib/evaluate.py#L22">previous version</a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><a class="reference external" href="https://github.com/microsoft/qlib/blob/7c31012b507a3823117bddcc693fc64899460b2a/qlib/tests/data.py#L17">A new version</a> of data is released. Due to the unstability of Yahoo data source, the data may be different after downloading data again.</p></li>
+<li><p>Users could check out the backtesting results between  <a class="reference external" href="https://github.com/microsoft/qlib/tree/7c31012b507a3823117bddcc693fc64899460b2a/examples/benchmarks">Current version</a> and <a class="reference external" href="https://github.com/microsoft/qlib/tree/v0.7.2/examples/benchmarks">previous version</a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="other-versions">
+<h2>Other Versions<a class="headerlink" href="#other-versions" title="Permalink to this heading"></a></h2>
+<p>Please refer to <a class="reference external" href="https://github.com/microsoft/qlib/releases">Github release Notes</a></p>
+</section>
+</section>
+</div>
+</body>
+</html>

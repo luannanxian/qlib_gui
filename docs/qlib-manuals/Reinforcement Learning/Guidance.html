@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="guidance">
+<h1>Guidance<a class="headerlink" href="#guidance" title="Permalink to this heading"></a></h1>
+<p>QlibRL can help users quickly get started and conveniently implement quantitative strategies based on reinforcement learning(RL) algorithms. For different user groups, we recommend the following guidance to use QlibRL.</p>
+<section id="beginners-to-reinforcement-learning-algorithms">
+<h2>Beginners to Reinforcement Learning Algorithms<a class="headerlink" href="#beginners-to-reinforcement-learning-algorithms" title="Permalink to this heading"></a></h2>
+<dl class="simple">
+<dt>Whether you are a quantitative researcher who wants to understand what RL can do in trading or a learner who wants to get started with RL algorithms in trading scenarios, if you have limited knowledge of RL and want to shield various detailed settings to quickly get started with RL algorithms, we recommend the following sequence to learn qlibrl:</dt><dd><ul class="simple">
+<li><p>Learn the fundamentals of RL in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/overall.html#reinforcement-learning">part1</a>.</p></li>
+<li><p>Understand the trading scenarios where RL methods can be applied in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/overall.html#potential-application-scenarios-in-quantitative-trading">part2</a>.</p></li>
+<li><p>Run the examples in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/quickstart.html">part3</a> to solve trading problems using RL.</p></li>
+<li><p>If you want to further explore QlibRL and make some customizations, you need to first understand the framework of QlibRL in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/framework.html">part4</a> and rewrite specific components according to your needs.</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="reinforcement-learning-algorithm-researcher">
+<h2>Reinforcement Learning Algorithm Researcher<a class="headerlink" href="#reinforcement-learning-algorithm-researcher" title="Permalink to this heading"></a></h2>
+<dl class="simple">
+<dt>If you are already familiar with existing RL algorithms and dedicated to researching RL algorithms but lack domain knowledge in the financial field, and you want to validate the effectiveness of your algorithms in financial trading scenarios, we recommend the following steps to get started with QlibRL:</dt><dd><ul class="simple">
+<li><p>Understand the trading scenarios where RL methods can be applied in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/overall.html#potential-application-scenarios-in-quantitative-trading">part2</a>.</p></li>
+<li><p>Choose an RL application scenario (currently, QlibRL has implemented two scenario examples: order execution and algorithmic trading). Run the example in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/quickstart.html">part3</a> to get it working.</p></li>
+<li><p>Modify the <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/policy.py">policy</a> part to incorporate your own RL algorithm.</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="quantitative-researcher">
+<h2>Quantitative Researcher<a class="headerlink" href="#quantitative-researcher" title="Permalink to this heading"></a></h2>
+<dl class="simple">
+<dt>If you have a certain level of financial domain knowledge and coding skills, and you want to explore the application of RL algorithms in the investment field, we recommend the following steps to explore QlibRL:</dt><dd><ul class="simple">
+<li><p>Learn the fundamentals of RL in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/overall.html#reinforcement-learning">part1</a>.</p></li>
+<li><p>Understand the trading scenarios where RL methods can be applied in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/overall.html#potential-application-scenarios-in-quantitative-trading">part2</a>.</p></li>
+<li><p>Run the examples in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/quickstart.html">part3</a> to solve trading problems using RL.</p></li>
+<li><p>Understand the framework of QlibRL in <a class="reference external" href="https://qlib.readthedocs.io/en/latest/component/rl/framework.html">part4</a>.</p></li>
+<li><p>Choose a suitable RL algorithm based on the characteristics of the problem you want to solve (currently, QlibRL supports PPO and DQN algorithms based on tianshou).</p></li>
+<li><p>Design the MDP (Markov Decision Process) process based on market trading rules and the problem you want to solve. Refer to the example in order execution and make corresponding modifications to the following modules: <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/state.py#L70">State</a>, <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/state.py#L18">Metrics</a>, <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/interpreter.py#L199">ActionInterpreter</a>, <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/interpreter.py#L68">StateInterpreter</a>, <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/reward.py">Reward</a>, <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/interpreter.py#L44">Observation</a>, <a class="reference external" href="https://github.com/microsoft/qlib/blob/main/qlib/rl/order_execution/simulator_simple.py">Simulator</a>.</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+</section>
+</div>
+</body>
+</html>

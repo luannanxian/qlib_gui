@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div itemprop="articleBody">
+<section id="installation">
+<span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h1>
+<section id="qlib-installation">
+<h2><code class="docutils literal notranslate"><span class="pre">Qlib</span></code> Installation<a class="headerlink" href="#qlib-installation" title="Permalink to this heading"></a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><cite>Qlib</cite> supports both <cite>Windows</cite> and <cite>Linux</cite>. It’s recommended to use <cite>Qlib</cite> in <cite>Linux</cite>. <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> supports Python3, which is up to Python3.8.</p>
+</div>
+<p>Users can easily install <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> by pip according to the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>pyqlib
+</pre></div>
+</div>
+<p>Also, Users can install <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> by the source code according to the following steps:</p>
+<ul>
+<li><p>Enter the root directory of <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>, in which the file <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> exists.</p></li>
+<li><p>Then, please execute the following command to install the environment dependencies and install <code class="docutils literal notranslate"><span class="pre">Qlib</span></code>:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>numpy
+$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>cython
+$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/microsoft/qlib.git<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>qlib
+$<span class="w"> </span>python<span class="w"> </span>setup.py<span class="w"> </span>install
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It’s recommended to use anaconda/miniconda to setup the environment. <code class="docutils literal notranslate"><span class="pre">Qlib</span></code> needs lightgbm and pytorch packages, use pip to install them.</p>
+</div>
+<p>Use the following code to make sure the installation successful:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">qlib</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">qlib</span><span class="o">.</span><span class="n">__version__</span>
+<span class="go">&lt;LATEST VERSION&gt;</span>
+</pre></div>
+</div>
+</section>
+</section>
+</div>
+</body>
+</html>
