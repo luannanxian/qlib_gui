@@ -60,7 +60,7 @@ class TestValidationError:
 
     def test_validation_error_creation(self):
         """Test ValidationError creation."""
-        from app.modules.common.exceptions.base import ValidationError
+        from app.modules.common.exceptions.business import ValidationError
 
         exc = ValidationError("Invalid input")
         assert exc.message == "Invalid input"
@@ -69,7 +69,7 @@ class TestValidationError:
 
     def test_validation_error_with_details(self):
         """Test ValidationError with details."""
-        from app.modules.common.exceptions.base import ValidationError
+        from app.modules.common.exceptions.business import ValidationError
 
         details = {"field": "email", "reason": "invalid format"}
         exc = ValidationError("Email validation failed", details=details)
@@ -79,14 +79,16 @@ class TestValidationError:
 
     def test_validation_error_inherits_from_qlib_ui_exception(self):
         """Test that ValidationError inherits from QlibUIException."""
-        from app.modules.common.exceptions.base import ValidationError, QlibUIException
+        from app.modules.common.exceptions.business import ValidationError
+        from app.modules.common.exceptions.base import QlibUIException
 
         exc = ValidationError("Test")
         assert isinstance(exc, QlibUIException)
 
     def test_validation_error_can_be_caught_as_qlib_ui_exception(self):
         """Test that ValidationError can be caught as QlibUIException."""
-        from app.modules.common.exceptions.base import ValidationError, QlibUIException
+        from app.modules.common.exceptions.business import ValidationError
+        from app.modules.common.exceptions.base import QlibUIException
 
         with pytest.raises(QlibUIException):
             raise ValidationError("Test error")
@@ -97,7 +99,7 @@ class TestNotFoundException:
 
     def test_not_found_exception_creation(self):
         """Test NotFoundException creation with resource and id."""
-        from app.modules.common.exceptions.base import NotFoundException
+        from app.modules.common.exceptions.business import NotFoundException
 
         exc = NotFoundException("User", "123")
         assert "User" in exc.message
@@ -108,7 +110,7 @@ class TestNotFoundException:
 
     def test_not_found_exception_message_format(self):
         """Test NotFoundException message format."""
-        from app.modules.common.exceptions.base import NotFoundException
+        from app.modules.common.exceptions.business import NotFoundException
 
         exc = NotFoundException("Dataset", "abc-def-123")
         expected_message = "Dataset with id abc-def-123 not found"
@@ -116,7 +118,8 @@ class TestNotFoundException:
 
     def test_not_found_exception_inherits_from_qlib_ui_exception(self):
         """Test that NotFoundException inherits from QlibUIException."""
-        from app.modules.common.exceptions.base import NotFoundException, QlibUIException
+        from app.modules.common.exceptions.business import NotFoundException
+        from app.modules.common.exceptions.base import QlibUIException
 
         exc = NotFoundException("Resource", "id")
         assert isinstance(exc, QlibUIException)
@@ -127,7 +130,7 @@ class TestPermissionDeniedException:
 
     def test_permission_denied_exception_creation(self):
         """Test PermissionDeniedException creation."""
-        from app.modules.common.exceptions.base import PermissionDeniedException
+        from app.modules.common.exceptions.business import PermissionDeniedException
 
         exc = PermissionDeniedException("delete", "Dataset")
         assert "delete" in exc.message
@@ -138,7 +141,7 @@ class TestPermissionDeniedException:
 
     def test_permission_denied_exception_message_format(self):
         """Test PermissionDeniedException message format."""
-        from app.modules.common.exceptions.base import PermissionDeniedException
+        from app.modules.common.exceptions.business import PermissionDeniedException
 
         exc = PermissionDeniedException("update", "Strategy")
         expected_message = "Permission denied for action 'update' on 'Strategy'"
@@ -146,7 +149,8 @@ class TestPermissionDeniedException:
 
     def test_permission_denied_exception_inherits_from_qlib_ui_exception(self):
         """Test that PermissionDeniedException inherits from QlibUIException."""
-        from app.modules.common.exceptions.base import PermissionDeniedException, QlibUIException
+        from app.modules.common.exceptions.business import PermissionDeniedException
+        from app.modules.common.exceptions.base import QlibUIException
 
         exc = PermissionDeniedException("read", "Resource")
         assert isinstance(exc, QlibUIException)

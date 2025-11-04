@@ -15,7 +15,7 @@ class TestDataImportException:
 
         exc = DataImportException("Failed to import CSV")
         assert exc.message == "Failed to import CSV"
-        assert exc.code == "DATA_IMPORT_FAILED"
+        assert exc.code == "DATA_IMPORT_ERROR"
 
     def test_data_import_exception_with_custom_code(self):
         """Test DataImportException with custom error code."""
@@ -50,7 +50,7 @@ class TestBacktestException:
 
         exc = BacktestException("Backtest failed")
         assert exc.message == "Backtest failed"
-        assert exc.code == "BACKTEST_FAILED"
+        assert exc.code == "BACKTEST_ERROR"
 
     def test_backtest_exception_with_custom_code(self):
         """Test BacktestException with custom code."""
@@ -85,7 +85,7 @@ class TestCodeExecutionException:
 
         exc = CodeExecutionException("Code execution failed")
         assert exc.message == "Code execution failed"
-        assert exc.code == "CODE_EXECUTION_FAILED"
+        assert exc.code == "CODE_EXECUTION_ERROR"
 
     def test_code_execution_exception_with_custom_code(self):
         """Test CodeExecutionException with custom code."""

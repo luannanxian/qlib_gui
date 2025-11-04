@@ -33,19 +33,26 @@ class PermissionDeniedException(QlibUIException):
 class DataImportException(QlibUIException):
     """Data import error exception"""
 
-    def __init__(self, message: str, details: dict = None):
-        super().__init__(message, "DATA_IMPORT_ERROR", details)
+    def __init__(self, message: str, code: str = "DATA_IMPORT_ERROR", details: dict = None):
+        super().__init__(message, code, details)
 
 
 class BacktestException(QlibUIException):
     """Backtest execution error exception"""
 
-    def __init__(self, message: str, details: dict = None):
-        super().__init__(message, "BACKTEST_ERROR", details)
+    def __init__(self, message: str, code: str = "BACKTEST_ERROR", details: dict = None):
+        super().__init__(message, code, details)
 
 
 class CodeExecutionException(QlibUIException):
     """Code execution error exception"""
 
-    def __init__(self, message: str, details: dict = None):
-        super().__init__(message, "CODE_EXECUTION_ERROR", details)
+    def __init__(self, message: str, code: str = "CODE_EXECUTION_ERROR", details: dict = None):
+        super().__init__(message, code, details)
+
+
+class StrategyException(QlibUIException):
+    """Strategy error exception"""
+
+    def __init__(self, message: str, code: str = "STRATEGY_ERROR", details: dict = None):
+        super().__init__(message, code, details)
