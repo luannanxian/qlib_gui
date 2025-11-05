@@ -177,6 +177,28 @@ class DatabaseSessionManager:
 db_manager = DatabaseSessionManager(settings.DATABASE_URL)
 
 
+# Create a session maker for use in Celery tasks and other contexts
+async_session_maker = None
+
+
+def init_session_maker() -> async_sessionmaker[AsyncSession]:
+    """
+    Initialize and return the async session maker.
+
+    This is used by Celery tasks and other contexts that need
+    to create database sessions outside of FastAPI dependency injection.
+
+    Returns:
+        async_sessionmaker: Session maker instance
+    """
+    global async_session_maker
+    if async_session_maker is None:
+        if db_manager._sessionmaker is None:
+            db_manager.init()
+        async_session_maker = db_manager._sessionmaker
+    return async_session_maker
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency for database session injection.
