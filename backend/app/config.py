@@ -5,7 +5,9 @@ Application Configuration
 from functools import lru_cache
 from typing import List, Optional
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator, ValidationError
+import re
+import sys
 
 
 class Settings(BaseSettings):
@@ -18,17 +20,21 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api"
 
     # Server
-    HOST: str = Field(default="0.0.0.0", env="BACKEND_HOST")
-    PORT: int = Field(default=8000, env="BACKEND_PORT")
+    BACKEND_HOST: str = Field(default="0.0.0.0")
+    BACKEND_PORT: int = Field(default=8000)
 
-    # Database
+    # Database - MySQL Configuration
+    # IMPORTANT: Never commit real credentials! Set via DATABASE_URL environment variable
     DATABASE_URL: str = Field(
-        default="sqlite+aiosqlite:///./qlib_ui.db",
-        env="DATABASE_URL"
+        ...,  # Required field, no default
+        env="DATABASE_URL",
+        description="Database connection URL (e.g., mysql+aiomysql://user:pass@host:port/db)"
     )
     DATABASE_POOL_SIZE: int = Field(default=20, env="DATABASE_POOL_SIZE")
     DATABASE_MAX_OVERFLOW: int = Field(default=10, env="DATABASE_MAX_OVERFLOW")
     DATABASE_ECHO: bool = Field(default=False, env="DATABASE_ECHO")
+    DATABASE_POOL_RECYCLE: int = Field(default=3600, env="DATABASE_POOL_RECYCLE")  # Recycle connections after 1 hour
+    DATABASE_POOL_PRE_PING: bool = Field(default=True, env="DATABASE_POOL_PRE_PING")  # Verify connections before use
 
     # Redis
     REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
@@ -45,8 +51,10 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = Field(
-        default="your-secret-key-change-in-production",
-        env="SECRET_KEY"
+        ...,  # Required field, no default
+        env="SECRET_KEY",
+        min_length=32,
+        description="Secret key for JWT signing (min 32 chars, use 64+ in production)"
     )
     ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
@@ -76,6 +84,78 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
+    LOG_FORMAT: str = Field(default="json", env="LOG_FORMAT")  # json or text
+    LOG_ROTATION_SIZE: str = Field(default="100 MB", env="LOG_ROTATION_SIZE")
+    LOG_RETENTION_DAYS: int = Field(default=30, env="LOG_RETENTION_DAYS")
+    LOG_COMPRESSION: str = Field(default="zip", env="LOG_COMPRESSION")
+    LOG_REQUEST_BODY: bool = Field(default=True, env="LOG_REQUEST_BODY")
+    LOG_RESPONSE_BODY: bool = Field(default=False, env="LOG_RESPONSE_BODY")
+    SLOW_QUERY_THRESHOLD_MS: float = Field(default=100.0, env="SLOW_QUERY_THRESHOLD_MS")
+    SLOW_REQUEST_THRESHOLD_MS: float = Field(default=1000.0, env="SLOW_REQUEST_THRESHOLD_MS")
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        """Validate database URL for security issues"""
+        # Check for weak/common passwords
+        weak_passwords = ["password", "123456", "admin", "root", "test"]
+
+        # Extract password from URL
+        if "@" in v:
+            credentials_part = v.split("@")[0]
+            if ":" in credentials_part:
+                password = credentials_part.split(":")[-1].split("//")[-1]
+
+                # Check password strength
+                if password.lower() in weak_passwords:
+                    raise ValueError(
+                        "Weak database password detected! Use a strong password with "
+                        "at least 12 characters including letters, numbers, and symbols."
+                    )
+
+                if len(password) < 8:
+                    raise ValueError(
+                        "Database password too short! Use at least 8 characters "
+                        "(12+ recommended for production)."
+                    )
+
+        return v
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v: str, info) -> str:
+        """Validate SECRET_KEY strength especially in production"""
+        # Get environment from values being validated
+        app_env = info.data.get("APP_ENV", "development")
+
+        # Check for default/weak secret keys
+        weak_keys = [
+            "secret",
+            "your-secret-key",
+            "change-me",
+            "insecure",
+            "dev-secret",
+        ]
+
+        if any(weak in v.lower() for weak in weak_keys):
+            raise ValueError(
+                "Weak SECRET_KEY detected! Generate a secure random key using: "
+                "python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+            )
+
+        # Enforce stronger requirements in production
+        if app_env == "production":
+            if len(v) < 64:
+                raise ValueError(
+                    "SECRET_KEY must be at least 64 characters in production! "
+                    "Generate one using: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+                )
+
+            # Check entropy (should have mixed characters)
+            if not (any(c.isupper() for c in v) or any(c.islower() for c in v)):
+                raise ValueError("SECRET_KEY must contain mixed case characters for production")
+
+        return v
 
     class Config:
         env_file = ".env"
