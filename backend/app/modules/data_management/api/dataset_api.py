@@ -1,7 +1,8 @@
 """Dataset API Endpoints"""
 
 from typing import List
-from fastapi import APIRouter, HTTPException, status
+from datetime import datetime, timezone
+from fastapi import APIRouter, HTTPException, status, Query
 from app.modules.data_management.schemas.dataset import (
     DatasetCreate,
     DatasetUpdate,
@@ -16,27 +17,40 @@ router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 _datasets: dict[str, Dataset] = {}
 
 
+def to_response(dataset: Dataset) -> DatasetResponse:
+    """Convert Dataset model to DatasetResponse schema."""
+    return DatasetResponse(
+        id=dataset.id,
+        name=dataset.name,
+        source=dataset.source,
+        file_path=dataset.file_path,
+        status=dataset.status,
+        row_count=dataset.row_count,
+        columns=dataset.columns,
+        metadata=dataset.metadata,
+        created_at=dataset.created_at,
+        updated_at=dataset.updated_at
+    )
+
+
 @router.get("", response_model=DatasetListResponse)
-async def list_datasets():
-    """List all datasets."""
+async def list_datasets(
+    skip: int = Query(0, ge=0, description="跳过记录数"),
+    limit: int = Query(100, ge=1, le=1000, description="返回记录数")
+):
+    """
+    List datasets with pagination.
+
+    - **skip**: Number of records to skip (default: 0)
+    - **limit**: Maximum number of records to return (default: 100, max: 1000)
+    """
     datasets = list(_datasets.values())
+    total = len(datasets)
+    paginated_datasets = datasets[skip:skip + limit]
+
     return DatasetListResponse(
-        total=len(datasets),
-        items=[
-            DatasetResponse(
-                id=ds.id,
-                name=ds.name,
-                source=ds.source,
-                file_path=ds.file_path,
-                status=ds.status,
-                row_count=ds.row_count,
-                columns=ds.columns,
-                metadata=ds.metadata,
-                created_at=ds.created_at,
-                updated_at=ds.updated_at
-            )
-            for ds in datasets
-        ]
+        total=total,
+        items=[to_response(ds) for ds in paginated_datasets]
     )
 
 
@@ -49,19 +63,7 @@ async def get_dataset(dataset_id: str):
             detail=f"Dataset with id {dataset_id} not found"
         )
 
-    ds = _datasets[dataset_id]
-    return DatasetResponse(
-        id=ds.id,
-        name=ds.name,
-        source=ds.source,
-        file_path=ds.file_path,
-        status=ds.status,
-        row_count=ds.row_count,
-        columns=ds.columns,
-        metadata=ds.metadata,
-        created_at=ds.created_at,
-        updated_at=ds.updated_at
-    )
+    return to_response(_datasets[dataset_id])
 
 
 @router.post("", response_model=DatasetResponse, status_code=status.HTTP_201_CREATED)
@@ -76,18 +78,7 @@ async def create_dataset(dataset_in: DatasetCreate):
 
     _datasets[dataset.id] = dataset
 
-    return DatasetResponse(
-        id=dataset.id,
-        name=dataset.name,
-        source=dataset.source,
-        file_path=dataset.file_path,
-        status=dataset.status,
-        row_count=dataset.row_count,
-        columns=dataset.columns,
-        metadata=dataset.metadata,
-        created_at=dataset.created_at,
-        updated_at=dataset.updated_at
-    )
+    return to_response(dataset)
 
 
 @router.put("/{dataset_id}", response_model=DatasetResponse)
@@ -114,21 +105,9 @@ async def update_dataset(dataset_id: str, dataset_in: DatasetUpdate):
         dataset.metadata = dataset_in.metadata
 
     # Update timestamp
-    from datetime import datetime
-    dataset.updated_at = datetime.utcnow()
+    dataset.updated_at = datetime.now(timezone.utc)
 
-    return DatasetResponse(
-        id=dataset.id,
-        name=dataset.name,
-        source=dataset.source,
-        file_path=dataset.file_path,
-        status=dataset.status,
-        row_count=dataset.row_count,
-        columns=dataset.columns,
-        metadata=dataset.metadata,
-        created_at=dataset.created_at,
-        updated_at=dataset.updated_at
-    )
+    return to_response(dataset)
 
 
 @router.delete("/{dataset_id}", status_code=status.HTTP_204_NO_CONTENT)

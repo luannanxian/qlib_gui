@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 import uuid
 
@@ -24,8 +24,8 @@ class ChartConfig(BaseModel):
     chart_type: ChartType
     dataset_id: str
     config: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __str__(self) -> str:
         """String representation of ChartConfig"""
