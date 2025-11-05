@@ -1,0 +1,203 @@
+# Docker Compose for Qlib-UI Development Environment
+# Includes: FastAPI backend, MySQL, Redis, Celery worker, Celery beat
+
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: qlib-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-qlib_ui}
+      MYSQL_USER: ${MYSQL_USER:-qlib}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-qlib_password}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - qlib-network
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: qlib-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - qlib-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend Application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qlib-backend
+    restart: unless-stopped
+    environment:
+      # Application
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+
+      # Database
+      DATABASE_URL: mysql+aiomysql://${MYSQL_USER:-qlib}:${MYSQL_PASSWORD:-qlib_password}@mysql:3306/${MYSQL_DATABASE:-qlib_ui}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
+      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
+
+      # Redis & Celery
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production-minimum-32-chars}
+
+      # File Storage
+      UPLOAD_DIR: /app/data/uploads
+      RESULT_DIR: /app/results
+      LOG_DIR: /app/logs
+      CACHE_DIR: /app/cache
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./results:/app/results
+    networks:
+      - qlib-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qlib-celery-worker
+    restart: unless-stopped
+    environment:
+      # Application
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+
+      # Database
+      DATABASE_URL: mysql+aiomysql://${MYSQL_USER:-qlib}:${MYSQL_PASSWORD:-qlib_password}@mysql:3306/${MYSQL_DATABASE:-qlib_ui}
+
+      # Redis & Celery
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production-minimum-32-chars}
+
+      # File Storage
+      UPLOAD_DIR: /app/data/uploads
+      RESULT_DIR: /app/results
+      LOG_DIR: /app/logs
+      CACHE_DIR: /app/cache
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./results:/app/results
+    networks:
+      - qlib-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4 --queues=data_import,backtest,strategy
+
+  # Celery Beat Scheduler (for periodic tasks)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qlib-celery-beat
+    restart: unless-stopped
+    environment:
+      # Application
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+
+      # Database
+      DATABASE_URL: mysql+aiomysql://${MYSQL_USER:-qlib}:${MYSQL_PASSWORD:-qlib_password}@mysql:3306/${MYSQL_DATABASE:-qlib_ui}
+
+      # Redis & Celery
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production-minimum-32-chars}
+    volumes:
+      - ./app:/app/app
+      - celery_beat_data:/app/celerybeat
+    networks:
+      - qlib-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.celery_app beat --loglevel=info --schedule=/app/celerybeat/schedule
+
+  # Flower - Celery monitoring (optional)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qlib-flower
+    restart: unless-stopped
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    networks:
+      - qlib-network
+    depends_on:
+      - redis
+      - celery-worker
+    command: celery -A app.celery_app flower --port=5555
+
+networks:
+  qlib-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  celery_beat_data:
+    driver: local
