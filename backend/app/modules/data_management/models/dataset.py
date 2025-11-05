@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 import uuid
 
@@ -32,8 +32,8 @@ class Dataset(BaseModel):
     row_count: int = 0
     columns: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=datetime.now)  # Use local timezone
+    updated_at: datetime = Field(default_factory=datetime.now)  # Use local timezone
 
     @field_validator('row_count')
     @classmethod

@@ -254,7 +254,7 @@ class BaseRepository(Generic[ModelType]):
         if soft:
             # Soft delete: mark as deleted
             db_obj.is_deleted = True
-            db_obj.deleted_at = datetime.now(timezone.utc)
+            db_obj.deleted_at = datetime.now()  # Use local timezone
             if user_id:
                 db_obj.updated_by = user_id
             # Flush to persist the soft delete

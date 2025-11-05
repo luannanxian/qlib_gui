@@ -26,7 +26,7 @@ class TimestampMixin:
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
-        comment="Record creation timestamp (UTC)"
+        comment="Record creation timestamp"
     )
 
     updated_at: Mapped[datetime] = mapped_column(
@@ -34,7 +34,7 @@ class TimestampMixin:
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
-        comment="Record last update timestamp (UTC)"
+        comment="Record last update timestamp"
     )
 
 
@@ -53,7 +53,7 @@ class SoftDeleteMixin:
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Deletion timestamp (UTC)"
+        comment="Deletion timestamp"
     )
 
 
