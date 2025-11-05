@@ -40,6 +40,15 @@ async def lifespan(app: FastAPI):
     # Startup
     from urllib.parse import urlparse, urlunparse
 
+    # Validate environment variables before proceeding
+    logger.info("Validating environment variables...")
+    try:
+        settings.validate_required_vars()
+        logger.info("✅ Environment variables validated")
+    except ValueError as e:
+        logger.error(f"❌ Environment validation failed: {e}", exc_info=True)
+        raise
+
     # Sanitize database URL for logging
     parsed_url = urlparse(settings.DATABASE_URL)
     sanitized_url = parsed_url._replace(netloc=f"***:***@{parsed_url.hostname}:{parsed_url.port}")

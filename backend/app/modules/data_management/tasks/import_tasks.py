@@ -81,6 +81,32 @@ def process_data_import(
             # Convert import_type string to enum
             import_type_enum = ImportType(import_type)
 
+            # Idempotency check: Verify task is not already completed or cancelled
+            task = await service.import_task_repo.get(task_id)
+            if task is None:
+                logger.error(f"Task not found: {task_id}")
+                return {
+                    "success": False,
+                    "task_id": task_id,
+                    "errors": [{"message": "Task not found"}],
+                }
+
+            # Skip processing if task is already in terminal state
+            if task.status in [ImportStatus.COMPLETED.value, ImportStatus.CANCELLED.value]:
+                logger.warning(
+                    f"Skipping processing: task already in terminal state",
+                    extra={
+                        "task_id": task_id,
+                        "current_status": task.status,
+                    }
+                )
+                return {
+                    "success": True,
+                    "task_id": task_id,
+                    "skipped": True,
+                    "reason": f"Task already {task.status}",
+                }
+
             # Update task to PROCESSING
             await service.import_task_repo.update(
                 id=task_id,

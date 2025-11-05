@@ -157,6 +157,73 @@ class Settings(BaseSettings):
 
         return v
 
+    def validate_required_vars(self) -> None:
+        """
+        Validate required environment variables at application startup.
+
+        This method checks that all critical environment variables are properly set
+        and provides helpful error messages for missing or invalid configurations.
+
+        Raises:
+            ValueError: If any critical environment variable is missing or invalid
+        """
+        errors = []
+
+        # Check DATABASE_URL
+        if not self.DATABASE_URL:
+            errors.append("DATABASE_URL is required but not set")
+        elif not any(self.DATABASE_URL.startswith(prefix) for prefix in ["mysql+aiomysql://", "mysql+pymysql://", "postgresql+asyncpg://"]):
+            errors.append(
+                "DATABASE_URL must start with a valid async driver: "
+                "mysql+aiomysql://, mysql+pymysql://, or postgresql+asyncpg://"
+            )
+
+        # Check SECRET_KEY
+        if not self.SECRET_KEY:
+            errors.append("SECRET_KEY is required but not set")
+
+        # Check Redis URLs
+        if not self.REDIS_URL.startswith("redis://"):
+            errors.append("REDIS_URL must start with redis://")
+
+        if not self.CELERY_BROKER_URL.startswith("redis://"):
+            errors.append("CELERY_BROKER_URL must start with redis://")
+
+        if not self.CELERY_RESULT_BACKEND.startswith("redis://"):
+            errors.append("CELERY_RESULT_BACKEND must start with redis://")
+
+        # Check directory paths exist or can be created
+        import os
+        for dir_name, dir_path in [
+            ("DATA_DIR", self.DATA_DIR),
+            ("UPLOAD_DIR", self.UPLOAD_DIR),
+            ("RESULT_DIR", self.RESULT_DIR),
+            ("LOG_DIR", self.LOG_DIR),
+            ("CACHE_DIR", self.CACHE_DIR),
+        ]:
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except Exception as e:
+                errors.append(f"Cannot create {dir_name} at {dir_path}: {e}")
+
+        # Production-specific checks
+        if self.APP_ENV == "production":
+            if self.DEBUG:
+                errors.append("DEBUG must be False in production")
+
+            if len(self.SECRET_KEY) < 64:
+                errors.append("SECRET_KEY must be at least 64 characters in production")
+
+            if "localhost" in self.DATABASE_URL or "127.0.0.1" in self.DATABASE_URL:
+                errors.append(
+                    "DATABASE_URL should not use localhost in production. "
+                    "Use proper database host."
+                )
+
+        if errors:
+            error_message = "Environment variable validation failed:\n" + "\n".join(f"  - {error}" for error in errors)
+            raise ValueError(error_message)
+
     class Config:
         env_file = ".env"
         case_sensitive = True

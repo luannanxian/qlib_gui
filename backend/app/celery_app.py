@@ -4,8 +4,11 @@ Celery Application Configuration
 Configures Celery for async task processing with Redis broker.
 """
 
+import os
+from logging.handlers import RotatingFileHandler
+
 from celery import Celery
-from celery.signals import task_prerun, task_postrun, task_failure
+from celery.signals import task_prerun, task_postrun, task_failure, worker_ready
 
 from app.config import settings
 
@@ -41,9 +44,13 @@ celery_app.conf.update(
     worker_prefetch_multiplier=4,
     worker_max_tasks_per_child=1000,
 
-    # Retry settings
+    # Retry settings with exponential backoff and jitter
     task_acks_late=True,
     task_reject_on_worker_lost=True,
+    task_autoretry_for=(Exception,),  # Auto-retry for any exception
+    task_retry_backoff=True,  # Enable exponential backoff
+    task_retry_backoff_max=600,  # Max retry delay: 10 minutes
+    task_retry_jitter=True,  # Add random jitter to prevent thundering herd
 
     # Task routing
     task_routes={
@@ -62,6 +69,46 @@ celery_app.autodiscover_tasks(
     ],
     force=True,
 )
+
+
+@worker_ready.connect
+def setup_log_rotation(sender=None, **kwargs):
+    """
+    Configure log rotation for Celery worker.
+
+    This prevents log files from consuming excessive disk space
+    by rotating logs when they reach 10MB and keeping 5 backup files.
+    """
+    import logging
+
+    # Get Celery logger
+    celery_logger = logging.getLogger("celery")
+
+    # Ensure log directory exists
+    log_dir = settings.LOG_DIR
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Create rotating file handler
+    log_file = os.path.join(log_dir, "celery.log")
+    handler = RotatingFileHandler(
+        log_file,
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,  # Keep 5 backup files
+        encoding="utf-8",
+    )
+
+    # Set formatter
+    formatter = logging.Formatter(
+        "[%(asctime)s: %(levelname)s/%(processName)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    handler.setFormatter(formatter)
+
+    # Add handler to Celery logger
+    celery_logger.addHandler(handler)
+    celery_logger.setLevel(logging.INFO)
+
+    celery_logger.info("Log rotation configured: max 10MB per file, 5 backups")
 
 
 @task_prerun.connect

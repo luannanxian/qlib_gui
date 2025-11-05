@@ -29,6 +29,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
 
   # Redis Cache & Message Broker
   redis:
@@ -47,6 +55,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # FastAPI Backend Application
   backend:
@@ -95,6 +111,14 @@ services:
       redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
 
   # Celery Worker
   celery-worker:
@@ -138,6 +162,14 @@ services:
       redis:
         condition: service_healthy
     command: celery -A app.celery_app worker --loglevel=info --concurrency=4 --queues=data_import,backtest,strategy
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
 
   # Celery Beat Scheduler (for periodic tasks)
   celery-beat:
@@ -172,6 +204,14 @@ services:
       redis:
         condition: service_healthy
     command: celery -A app.celery_app beat --loglevel=info --schedule=/app/celerybeat/schedule
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   # Flower - Celery monitoring (optional)
   flower:
@@ -191,6 +231,14 @@ services:
       - redis
       - celery-worker
     command: celery -A app.celery_app flower --port=5555
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
 networks:
   qlib-network:
