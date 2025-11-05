@@ -80,15 +80,23 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations with the given connection."""
+    from loguru import logger
+
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
+        transaction_per_migration=True,  # Each migration in its own transaction
     )
 
     with context.begin_transaction():
-        context.run_migrations()
+        try:
+            context.run_migrations()
+        except Exception as e:
+            logger.error(f"Migration failed: {e}", exc_info=True)
+            # Transaction will automatically rollback on exception
+            raise
 
 
 async def run_async_migrations() -> None:

@@ -16,6 +16,9 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
+# Import signal handlers (must be after celery_app creation)
+from app import celery_signals  # noqa: F401
+
 # Celery configuration
 celery_app.conf.update(
     # Task settings

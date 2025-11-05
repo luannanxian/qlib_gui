@@ -10,10 +10,12 @@ services:
     container_name: qlib-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      # Security: Require environment variables to be set explicitly
+      # Use: docker-compose --env-file .env.docker up -d
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Error: MYSQL_ROOT_PASSWORD not set in .env.docker}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-qlib_ui}
       MYSQL_USER: ${MYSQL_USER:-qlib}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-qlib_password}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Error: MYSQL_PASSWORD not set in .env.docker}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
@@ -23,7 +25,7 @@ services:
       - qlib-network
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 5

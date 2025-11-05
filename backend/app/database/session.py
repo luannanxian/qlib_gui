@@ -5,6 +5,7 @@ This module provides async database session management with connection pooling,
 transaction handling, and dependency injection for FastAPI.
 """
 
+import threading
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -178,12 +179,14 @@ db_manager = DatabaseSessionManager(settings.DATABASE_URL)
 
 
 # Create a session maker for use in Celery tasks and other contexts
+_session_maker_lock = threading.Lock()
 async_session_maker = None
 
 
 def init_session_maker() -> async_sessionmaker[AsyncSession]:
     """
     Initialize and return the async session maker.
+    Thread-safe implementation using double-check locking pattern.
 
     This is used by Celery tasks and other contexts that need
     to create database sessions outside of FastAPI dependency injection.
@@ -192,10 +195,15 @@ def init_session_maker() -> async_sessionmaker[AsyncSession]:
         async_sessionmaker: Session maker instance
     """
     global async_session_maker
+
     if async_session_maker is None:
-        if db_manager._sessionmaker is None:
-            db_manager.init()
-        async_session_maker = db_manager._sessionmaker
+        with _session_maker_lock:
+            # Double-check locking pattern for thread safety
+            if async_session_maker is None:
+                if db_manager._sessionmaker is None:
+                    db_manager.init()
+                async_session_maker = db_manager._sessionmaker
+
     return async_session_maker
 
 

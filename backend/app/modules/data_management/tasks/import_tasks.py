@@ -100,13 +100,44 @@ def process_data_import(
                 },
             )
 
-            # Process the import
-            result = await service.process_import(
-                task_id=task_id,
-                file_path=file_path,
-                import_type=import_type_enum,
-                import_config=import_config,
-            )
+            # Process the import with timeout protection (1 hour)
+            try:
+                result = await asyncio.wait_for(
+                    service.process_import(
+                        task_id=task_id,
+                        file_path=file_path,
+                        import_type=import_type_enum,
+                        import_config=import_config,
+                    ),
+                    timeout=3600  # 1 hour timeout
+                )
+
+            except asyncio.TimeoutError:
+                # Handle timeout explicitly
+                logger.error(
+                    f"Task timeout after 3600 seconds",
+                    extra={"task_id": task_id}
+                )
+
+                # Update task status to failed
+                if session:
+                    try:
+                        await service.import_task_repo.update(
+                            id=task_id,
+                            obj_in={
+                                "status": ImportStatus.FAILED.value,
+                                "error_message": "Task timeout after 1 hour",
+                            },
+                            commit=True
+                        )
+                    except Exception as update_error:
+                        logger.error(f"Failed to update task status: {str(update_error)}")
+
+                return {
+                    "success": False,
+                    "task_id": task_id,
+                    "errors": [{"message": "Task timeout after 1 hour"}],
+                }
 
             if result.success:
                 logger.info(
