@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """
-Create import_tasks table in MySQL database
-
-This script creates the import_tasks table for tracking data import operations.
-Run this after the main database initialization.
+Recreate import_tasks table (drop and create)
 """
 
 import asyncio
 import sys
 from pathlib import Path
 
-# Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
@@ -20,17 +16,20 @@ from app.modules.common.logging import get_logger
 logger = get_logger(__name__)
 
 
-async def create_import_tasks_table():
-    """Create import_tasks table with all indexes"""
-
-    # Initialize database engine
+async def recreate_table():
+    """Drop and recreate import_tasks table"""
     db_manager.init()
 
     async with db_manager.session() as session:
         try:
-            # Create import_tasks table
+            # Drop table if exists
+            await session.execute(text("DROP TABLE IF EXISTS import_tasks"))
+            await session.commit()
+            logger.info("✅ Dropped import_tasks table")
+
+            # Create table with correct schema
             create_table_sql = """
-            CREATE TABLE IF NOT EXISTS import_tasks (
+            CREATE TABLE import_tasks (
                 id VARCHAR(36) PRIMARY KEY COMMENT 'UUID primary key',
                 task_name VARCHAR(255) NOT NULL COMMENT 'Human-readable task name',
                 import_type VARCHAR(50) NOT NULL COMMENT 'Import file type',
@@ -79,30 +78,12 @@ async def create_import_tasks_table():
 
             await session.execute(text(create_table_sql))
             await session.commit()
-
-            logger.info("✅ Table 'import_tasks' created successfully")
-
-            # Verify table creation
-            result = await session.execute(
-                text("SHOW TABLES LIKE 'import_tasks'")
-            )
-            if result.fetchone():
-                logger.info("✅ Table verification successful")
-
-                # Show table structure
-                result = await session.execute(text("DESCRIBE import_tasks"))
-                columns = result.fetchall()
-                logger.info(f"✅ Table has {len(columns)} columns")
-
-                # Show indexes
-                result = await session.execute(text("SHOW INDEX FROM import_tasks"))
-                indexes = result.fetchall()
-                logger.info(f"✅ Table has {len(indexes)} indexes")
+            logger.info("✅ Created import_tasks table with correct schema")
 
             return True
 
         except Exception as e:
-            logger.error(f"❌ Error creating import_tasks table: {e}", exc_info=True)
+            logger.error(f"❌ Error: {e}", exc_info=True)
             await session.rollback()
             return False
         finally:
@@ -110,19 +91,5 @@ async def create_import_tasks_table():
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("Creating import_tasks table in MySQL database")
-    print("=" * 60)
-
-    success = asyncio.run(create_import_tasks_table())
-
-    if success:
-        print("\n✅ Import tasks table created successfully!")
-        print("\nNext steps:")
-        print("1. Verify table: mysql -u root -p qlib_ui -e 'DESCRIBE import_tasks;'")
-        print("2. Check indexes: mysql -u root -p qlib_ui -e 'SHOW INDEX FROM import_tasks;'")
-        sys.exit(0)
-    else:
-        print("\n❌ Failed to create import_tasks table")
-        print("Check logs for details")
-        sys.exit(1)
+    success = asyncio.run(recreate_table())
+    sys.exit(0 if success else 1)
