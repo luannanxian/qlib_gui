@@ -9,6 +9,10 @@ from app.database.repositories.dataset import DatasetRepository
 from app.database.repositories.chart import ChartRepository
 from app.database.repositories.user_preferences import UserPreferencesRepository
 from app.database.repositories.import_task import ImportTaskRepository
+from app.database.repositories.preprocessing import (
+    PreprocessingRuleRepository,
+    PreprocessingTaskRepository,
+)
 
 __all__ = [
     "BaseRepository",
@@ -16,4 +20,6 @@ __all__ = [
     "ChartRepository",
     "UserPreferencesRepository",
     "ImportTaskRepository",
+    "PreprocessingRuleRepository",
+    "PreprocessingTaskRepository",
 ]

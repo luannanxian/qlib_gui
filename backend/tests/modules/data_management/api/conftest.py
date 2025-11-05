@@ -16,7 +16,10 @@ from sqlalchemy.pool import NullPool
 
 from app.database.base import Base
 # Import all models to register them with Base.metadata
-from app.database.models import Dataset, ChartConfig, UserPreferences, ImportTask
+from app.database.models import (
+    Dataset, ChartConfig, UserPreferences, ImportTask,
+    DataPreprocessingRule, DataPreprocessingTask
+)
 from app.database.repositories.dataset import DatasetRepository
 from app.database import get_db
 
