@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.modules.user_onboarding.api import mode_api
+from app.modules.data_management.api import dataset_api
 
 app = FastAPI(
     title="Qlib-UI API",
@@ -24,6 +25,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(mode_api.router, prefix="/api/user", tags=["user"])
+app.include_router(dataset_api.router)
 
 
 @app.get("/")
