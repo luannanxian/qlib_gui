@@ -13,6 +13,9 @@ from app.database.repositories.preprocessing import (
     PreprocessingRuleRepository,
     PreprocessingTaskRepository,
 )
+from app.database.repositories.strategy_template import StrategyTemplateRepository
+from app.database.repositories.strategy_instance import StrategyInstanceRepository
+from app.database.repositories.template_rating import TemplateRatingRepository
 
 __all__ = [
     "BaseRepository",
@@ -22,4 +25,7 @@ __all__ = [
     "ImportTaskRepository",
     "PreprocessingRuleRepository",
     "PreprocessingTaskRepository",
+    "StrategyTemplateRepository",
+    "StrategyInstanceRepository",
+    "TemplateRatingRepository",
 ]

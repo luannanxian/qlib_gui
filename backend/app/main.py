@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.modules.user_onboarding.api import mode_api
 from app.modules.data_management.api import dataset_api, preprocessing_api
+from app.modules.strategy.api import strategy_api
 
 # Import database
 from app.database import db_manager
@@ -172,6 +173,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(mode_api.router, prefix="/api/user", tags=["user"])
 app.include_router(dataset_api.router)
 app.include_router(preprocessing_api.router)
+app.include_router(strategy_api.router)
 
 
 @app.get("/")
