@@ -175,6 +175,10 @@ class ImportTask(BaseDBModel):
         Index("ix_import_status_created", "status", "created_at"),
         Index("ix_import_user_status", "user_id", "status"),
         Index("ix_import_type_status", "import_type", "status"),
+        # Optimized indexes for soft-delete and filtering queries
+        Index("ix_import_deleted_status_created", "is_deleted", "status", "created_at"),  # For get_active_tasks()
+        Index("ix_import_dataset_deleted_created", "dataset_id", "is_deleted", "created_at"),  # For get_by_dataset()
+        Index("ix_import_user_deleted_created", "user_id", "is_deleted", "created_at"),  # For get_by_user()
         {
             "comment": "Import task tracking table",
             "mysql_engine": "InnoDB",

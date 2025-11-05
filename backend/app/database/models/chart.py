@@ -84,6 +84,7 @@ class ChartConfig(BaseDBModel):
         Index("ix_chart_dataset_type", "dataset_id", "chart_type"),
         Index("ix_chart_type_name", "chart_type", "name"),
         Index("ix_chart_deleted_created", "is_deleted", "created_at"),  # For soft-delete queries
+        Index("ix_chart_deleted_updated", "is_deleted", "updated_at"),  # For recently updated queries
         Index("ix_chart_dataset_deleted", "dataset_id", "is_deleted"),  # For filtering charts by dataset
         {
             "comment": "Chart configuration storage table",

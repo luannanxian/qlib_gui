@@ -109,6 +109,7 @@ class Dataset(BaseDBModel):
         Index("ix_dataset_status_created", "status", "created_at"),
         Index("ix_dataset_name_source", "name", "source"),  # For name + source lookups
         Index("ix_dataset_deleted_created", "is_deleted", "created_at"),  # For soft-delete queries
+        Index("ix_dataset_deleted_updated", "is_deleted", "updated_at"),  # For recently updated queries
         # Single column indexes (some already defined with index=True in mapped_column)
         # Note: name, source, status already have individual indexes from mapped_column(index=True)
         {"comment": "Dataset storage table", "mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"}
