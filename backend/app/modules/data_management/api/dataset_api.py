@@ -54,7 +54,7 @@ async def list_datasets(
     skip: int = Query(0, ge=0, description="Number of records to skip (offset)"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum records to return"),
     source: Optional[str] = Query(None, description="Filter by data source (local, qlib, thirdparty)"),
-    status: Optional[str] = Query(None, description="Filter by status (valid, invalid, pending)"),
+    dataset_status: Optional[str] = Query(None, description="Filter by status (valid, invalid, pending)"),
     search: Optional[str] = Query(None, description="Search by dataset name"),
     db: AsyncSession = Depends(get_db),
     correlation_id: str = Depends(set_request_correlation_id)
@@ -66,7 +66,7 @@ async def list_datasets(
         skip: Number of records to skip (default: 0)
         limit: Maximum records to return (default: 100, max: 1000)
         source: Optional filter by data source
-        status: Optional filter by validation status
+        dataset_status: Optional filter by validation status
         search: Optional search term for dataset names
         db: Database session (injected)
         correlation_id: Request correlation ID (injected)
@@ -87,17 +87,17 @@ async def list_datasets(
 
         logger.info(
             f"Listing datasets: skip={skip}, limit={limit}, source={source}, "
-            f"status={status}, search={search}"
+            f"status={dataset_status}, search={search}"
         )
 
         # Initialize repository
         repo = DatasetRepository(db)
 
         # Get datasets with filters
-        if source or status or search:
+        if source or dataset_status or search:
             datasets = await repo.get_with_filters(
                 source=source,
-                status=status,
+                status=dataset_status,
                 search_term=search,
                 skip=skip,
                 limit=limit
@@ -106,7 +106,7 @@ async def list_datasets(
             total = await repo.count(
                 **{k: v for k, v in {
                     "source": source,
-                    "status": status
+                    "status": dataset_status
                 }.items() if v}
             )
         else:

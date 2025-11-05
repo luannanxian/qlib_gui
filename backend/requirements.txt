@@ -72,3 +72,4 @@ watchdog==3.0.0
 # Documentation
 mkdocs==1.5.3
 mkdocs-material==9.5.2
+openpyxl==3.1.2  # Excel file support for pandas
