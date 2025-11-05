@@ -2,7 +2,8 @@
 Application Configuration
 """
 
-from typing import Optional
+from functools import lru_cache
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -51,7 +52,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
 
     # CORS
-    CORS_ORIGINS: list[str] = Field(
+    CORS_ORIGINS: List[str] = Field(
         default=["http://localhost:3000", "http://localhost:5173"],
         env="CORS_ORIGINS"
     )
@@ -81,5 +82,14 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 
-# Global settings instance
-settings = Settings()
+@lru_cache()
+def get_settings() -> Settings:
+    """
+    Get settings instance with caching.
+    This function is cached to avoid re-reading environment variables.
+    """
+    return Settings()
+
+
+# Global settings instance for convenience
+settings = get_settings()
