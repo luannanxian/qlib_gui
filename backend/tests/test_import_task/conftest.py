@@ -4,66 +4,70 @@ Pytest Configuration for Import Task Tests
 Provides fixtures for testing import task functionality.
 """
 
-import pytest
 import asyncio
 from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.session import db_manager
-from app.database.models.import_task import ImportTask
+import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.pool import NullPool
+
+from app.database.base import Base
+# Import all models to register them with Base.metadata
+from app.database.models import Dataset, ChartConfig, UserPreferences, ImportTask
 from app.database.repositories.import_task import ImportTaskRepository
+
+# Test database URL (use in-memory SQLite for testing)
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture(scope="session")
 def event_loop():
-    """Create event loop for async tests"""
+    """Create an event loop for the test session"""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
-async def init_database():
-    """Initialize database for tests"""
-    db_manager.init()
-    yield
-    await db_manager.close()
-
-
-@pytest.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Provide database session for tests"""
-    async with db_manager.session() as session:
-        yield session
-
-
-@pytest.fixture
-async def import_task_repo(db_session: AsyncSession) -> ImportTaskRepository:
-    """Provide import task repository"""
-    return ImportTaskRepository(db_session)
-
-
-@pytest.fixture
-async def sample_import_task(db_session: AsyncSession) -> ImportTask:
-    """Create sample import task for testing"""
-    from app.database.models.import_task import ImportStatus, ImportType
-
-    task = ImportTask(
-        task_name="Test Import Task",
-        import_type=ImportType.CSV.value,
-        status=ImportStatus.PENDING.value,
-        original_filename="test_data.csv",
-        file_path="/tmp/test_data.csv",
-        file_size=1024,
-        user_id="test_user_123"
+@pytest_asyncio.fixture(scope="function")
+async def test_engine():
+    """Create a test database engine"""
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        poolclass=NullPool,
     )
 
-    db_session.add(task)
-    await db_session.commit()
-    await db_session.refresh(task)
+    # Create all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-    yield task
+    yield engine
 
-    # Cleanup
-    await db_session.delete(task)
-    await db_session.commit()
+    # Drop all tables after test
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
+    """Create a test database session"""
+    async_session = async_sessionmaker(
+        bind=test_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+
+    async with async_session() as session:
+        yield session
+        await session.rollback()
+
+
+@pytest_asyncio.fixture
+async def import_task_repo(db_session: AsyncSession) -> ImportTaskRepository:
+    """Create an ImportTaskRepository instance for testing"""
+    return ImportTaskRepository(db_session)
