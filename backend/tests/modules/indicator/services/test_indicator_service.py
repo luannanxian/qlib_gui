@@ -760,3 +760,156 @@ class TestIndicatorServiceEdgeCases:
         await db_session.refresh(sample_indicator)
         # Final count should be initial + concurrent_increments
         assert sample_indicator.usage_count == initial_count + concurrent_increments
+
+
+@pytest.mark.asyncio
+class TestIndicatorServiceExceptionHandling:
+    """Test exception handling in IndicatorService."""
+
+    async def test_get_all_indicators_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test get_all_indicators when database raises exception."""
+        # ARRANGE
+        from unittest.mock import AsyncMock, patch
+
+        # ACT & ASSERT
+        with patch.object(
+            indicator_service.indicator_repo,
+            'get_multi',
+            side_effect=Exception("Database error")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await indicator_service.get_all_indicators()
+            assert "Database error" in str(exc_info.value)
+
+    async def test_get_indicators_by_category_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test get_indicators_by_category when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            indicator_service.indicator_repo,
+            'get_by_category',
+            side_effect=Exception("Category query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await indicator_service.get_indicators_by_category("trend")
+            assert "Category query failed" in str(exc_info.value)
+
+    async def test_search_indicators_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test search_indicators when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            indicator_service.indicator_repo,
+            'search_by_name',
+            side_effect=Exception("Search failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await indicator_service.search_indicators("test")
+            assert "Search failed" in str(exc_info.value)
+
+    async def test_get_indicator_detail_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test get_indicator_detail when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            indicator_service.indicator_repo,
+            'get',
+            side_effect=Exception("Detail query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await indicator_service.get_indicator_detail("test_id")
+            assert "Detail query failed" in str(exc_info.value)
+
+    async def test_increment_usage_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test increment_usage when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT
+        with patch.object(
+            indicator_service.indicator_repo,
+            'increment_usage_count',
+            side_effect=Exception("Increment failed")
+        ):
+            result = await indicator_service.increment_usage("test_id")
+
+        # ASSERT
+        # Should return False on exception
+        assert result is False
+
+    async def test_get_popular_indicators_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test get_popular_indicators when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            indicator_service.indicator_repo,
+            'get_popular_indicators',
+            side_effect=Exception("Popular query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await indicator_service.get_popular_indicators()
+            assert "Popular query failed" in str(exc_info.value)
+
+    async def test_validate_indicator_exists_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test validate_indicator_exists when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT
+        with patch.object(
+            indicator_service.indicator_repo,
+            'get',
+            side_effect=Exception("Validation failed")
+        ):
+            result = await indicator_service.validate_indicator_exists("test_id")
+
+        # ASSERT
+        # Should return False on exception
+        assert result is False
+
+    async def test_get_indicator_categories_database_error(
+        self,
+        indicator_service: IndicatorService
+    ):
+        """Test get_indicator_categories when exception occurs."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # Mock IndicatorCategory to raise exception
+        # ACT & ASSERT
+        with patch(
+            'app.modules.indicator.services.indicator_service.IndicatorCategory',
+            side_effect=Exception("Category enumeration failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await indicator_service.get_indicator_categories()
+            assert "Category enumeration failed" in str(exc_info.value)

@@ -982,3 +982,270 @@ class TestCustomFactorServiceEdgeCases:
         # ASSERT
         assert "🚀" in result["factor"]["factor_name"]
         assert "αβγδε" in result["factor"]["description"]
+
+
+@pytest.mark.asyncio
+class TestCustomFactorServiceExceptionHandling:
+    """Test exception handling in CustomFactorService."""
+
+    async def test_create_factor_unexpected_exception(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test create_factor when unexpected exception occurs."""
+        # ARRANGE
+        from unittest.mock import patch
+        factor_data = {
+            "factor_name": "测试因子",
+            "formula": "close",
+            "formula_language": "qlib_alpha"
+        }
+        user_id = "user123"
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'create',
+            side_effect=Exception("Unexpected database error")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.create_factor(factor_data, user_id)
+            assert "Unexpected database error" in str(exc_info.value)
+
+    async def test_create_factor_integrity_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test create_factor when IntegrityError occurs (duplicate name)."""
+        # ARRANGE
+        from unittest.mock import patch
+        factor_data = {
+            "factor_name": "重复因子",
+            "formula": "close",
+            "formula_language": "qlib_alpha"
+        }
+        user_id = "user123"
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'create',
+            side_effect=IntegrityError("Duplicate entry", None, None)
+        ):
+            with pytest.raises(ConflictError) as exc_info:
+                await custom_factor_service.create_factor(factor_data, user_id)
+            assert "重复因子" in str(exc_info.value)
+
+    async def test_get_user_factors_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test get_user_factors when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'get_user_factors',
+            side_effect=Exception("Database query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.get_user_factors("user123")
+            assert "Database query failed" in str(exc_info.value)
+
+    async def test_get_factor_detail_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test get_factor_detail when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'get',
+            side_effect=Exception("Detail query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.get_factor_detail("test_id")
+            assert "Detail query failed" in str(exc_info.value)
+
+    async def test_publish_factor_repository_returns_none(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test publish_factor when repository returns None."""
+        # ARRANGE
+        from unittest.mock import patch, AsyncMock
+
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+
+        # ACT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'publish_factor',
+            return_value=None
+        ):
+            result = await custom_factor_service.publish_factor(factor_id, user_id)
+
+        # ASSERT
+        assert result is None
+
+    async def test_publish_factor_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test publish_factor when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'get',
+            side_effect=Exception("Publish query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.publish_factor("test_id", "user123")
+            assert "Publish query failed" in str(exc_info.value)
+
+    async def test_make_public_repository_returns_none(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test make_public when repository returns None."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+
+        # ACT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'make_public',
+            return_value=None
+        ):
+            result = await custom_factor_service.make_public(factor_id, user_id)
+
+        # ASSERT
+        assert result is None
+
+    async def test_make_public_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test make_public when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'get',
+            side_effect=Exception("Make public query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.make_public("test_id", "user123")
+            assert "Make public query failed" in str(exc_info.value)
+
+    async def test_clone_factor_repository_returns_none(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_public_factor: CustomFactor
+    ):
+        """Test clone_factor when repository returns None."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        source_id = sample_public_factor.id
+
+        # ACT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'clone_factor',
+            return_value=None
+        ):
+            result = await custom_factor_service.clone_factor(source_id, "new_user")
+
+        # ASSERT
+        assert result is None
+
+    async def test_clone_factor_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test clone_factor when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'get',
+            side_effect=Exception("Clone query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.clone_factor("test_id", "user123")
+            assert "Clone query failed" in str(exc_info.value)
+
+    async def test_search_public_factors_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test search_public_factors when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'search_by_name',
+            side_effect=Exception("Search failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.search_public_factors("test")
+            assert "Search failed" in str(exc_info.value)
+
+    async def test_get_popular_factors_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test get_popular_factors when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'get_popular_factors',
+            side_effect=Exception("Popular query failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.get_popular_factors()
+            assert "Popular query failed" in str(exc_info.value)
+
+    async def test_delete_factor_database_error(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test delete_factor when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+
+        # ACT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'get',
+            side_effect=Exception("Delete query failed")
+        ):
+            result = await custom_factor_service.delete_factor("test_id", "user123")
+
+        # ASSERT
+        # Should return False on exception
+        assert result is False
