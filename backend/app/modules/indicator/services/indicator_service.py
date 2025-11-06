@@ -31,6 +31,43 @@ class IndicatorService:
         """
         self.indicator_repo = indicator_repo
 
+    async def get_all_indicators(
+        self,
+        skip: int = 0,
+        limit: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Get all indicators with pagination.
+
+        Args:
+            skip: Skip records
+            limit: Limit records
+
+        Returns:
+            Dict with indicators list and total count
+        """
+        try:
+            # Use base repository's get_multi with is_enabled filter
+            indicators = await self.indicator_repo.get_multi(
+                skip=skip,
+                limit=limit,
+                order_by="-usage_count",
+                is_enabled=True
+            )
+
+            # Get total count from database
+            total_count = await self.indicator_repo.count(is_enabled=True)
+
+            return {
+                "indicators": [self._to_dict(ind) for ind in indicators],
+                "total": total_count,
+                "skip": skip,
+                "limit": limit
+            }
+        except Exception as e:
+            logger.error(f"Error getting all indicators: {e}")
+            raise
+
     async def get_indicators_by_category(
         self,
         category: str,
@@ -55,9 +92,15 @@ class IndicatorService:
                 limit=limit
             )
 
+            # Get total count for this category
+            total_count = await self.indicator_repo.count(
+                category=category,
+                is_enabled=True
+            )
+
             return {
                 "indicators": [self._to_dict(ind) for ind in indicators],
-                "total": len(indicators),
+                "total": total_count,
                 "skip": skip,
                 "limit": limit
             }
@@ -89,9 +132,12 @@ class IndicatorService:
                 limit=limit
             )
 
+            # Get total count for search results
+            total_count = await self.indicator_repo.count_search_results(keyword=keyword)
+
             return {
                 "indicators": [self._to_dict(ind) for ind in indicators],
-                "total": len(indicators),
+                "total": total_count,
                 "keyword": keyword,
                 "skip": skip,
                 "limit": limit

@@ -11,6 +11,7 @@ from app.config import settings
 from app.modules.user_onboarding.api import mode_api
 from app.modules.data_management.api import dataset_api, preprocessing_api
 from app.modules.strategy.api import strategy_api
+from app.modules.indicator.api import indicator_api, custom_factor_api, user_library_api
 
 # Import database
 from app.database import db_manager
@@ -22,6 +23,7 @@ from app.modules.common.logging.middleware import (
     CorrelationIDMiddleware,
 )
 from app.modules.common.logging.audit import AuditLogger, AuditEventType, AuditSeverity
+from app.modules.common.error_handlers import register_exception_handlers
 
 # Setup logging before creating the app
 setup_logging(
@@ -143,37 +145,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Global exception handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """
-    Global exception handler with logging.
-    """
-    logger.exception(
-        f"Unhandled exception: {type(exc).__name__}",
-        extra={
-            "error_type": type(exc).__name__,
-            "error_message": str(exc),
-            "method": request.method,
-            "path": request.url.path,
-        },
-    )
-
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "message": "An unexpected error occurred",
-        },
-    )
-
+# Register exception handlers (replaces the old global exception handler)
+register_exception_handlers(app)
 
 # Include routers
 app.include_router(mode_api.router, prefix="/api/user", tags=["user"])
 app.include_router(dataset_api.router)
 app.include_router(preprocessing_api.router)
 app.include_router(strategy_api.router)
+app.include_router(indicator_api.router)
+app.include_router(custom_factor_api.router)
+app.include_router(user_library_api.router)
 
 
 @app.get("/")

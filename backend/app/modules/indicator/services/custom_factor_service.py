@@ -127,9 +127,15 @@ class CustomFactorService:
                 limit=limit
             )
 
+            # Get total count from database
+            total_count = await self.custom_factor_repo.count_user_factors(
+                user_id=user_id,
+                status=status
+            )
+
             return {
                 "factors": [self._to_dict(f) for f in factors],
-                "total": len(factors),
+                "total": total_count,
                 "skip": skip,
                 "limit": limit
             }
@@ -297,9 +303,16 @@ class CustomFactorService:
             # Filter to only public factors
             public_factors = [f for f in factors if f.is_public and f.status == FactorStatus.PUBLISHED.value]
 
+            # Get total count (note: this is not 100% accurate due to filtering in app layer)
+            # TODO: Move filtering to repository layer for accurate pagination
+            total_count = await self.custom_factor_repo.count_search_results(
+                keyword=keyword,
+                user_id=None
+            )
+
             return {
                 "factors": [self._to_dict(f) for f in public_factors],
-                "total": len(public_factors),
+                "total": total_count,  # Approximate - includes non-public matches
                 "keyword": keyword
             }
         except Exception as e:

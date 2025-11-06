@@ -1,0 +1,67 @@
+# Docker Compose for Test Environment
+# Provides isolated MySQL database for running tests
+#
+# Usage:
+#   Start test database:    docker-compose -f docker-compose.test.yml up -d
+#   Stop test database:     docker-compose -f docker-compose.test.yml down
+#   Remove with volumes:    docker-compose -f docker-compose.test.yml down -v
+
+version: '3.8'
+
+services:
+  # MySQL Test Database
+  mysql-test:
+    image: mysql:8.0
+    container_name: qlib-mysql-test
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: test_root_password
+      MYSQL_DATABASE: qlib_ui_test
+      MYSQL_USER: test_user
+      MYSQL_PASSWORD: test_password
+    ports:
+      # Use different port to avoid conflict with development database
+      - "3307:3306"
+    volumes:
+      # Use tmpfs for faster test database (in-memory)
+      # Comment out if you need persistent data for debugging
+      - type: tmpfs
+        target: /var/lib/mysql
+        tmpfs:
+          size: 1G
+      # Initialize database schema
+      - ./docker/mysql/test-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - qlib-test-network
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=200
+      --innodb_buffer_pool_size=256M
+      --innodb_log_file_size=128M
+      --innodb_flush_log_at_trx_commit=2
+      --innodb_flush_method=O_DIRECT
+      --sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "test_user", "-ptest_password"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  qlib-test-network:
+    driver: bridge
+    name: qlib-test-network
+
+# Note: No persistent volumes for test database
+# Each test run starts with a fresh database

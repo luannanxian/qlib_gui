@@ -55,9 +55,14 @@ class UserLibraryService:
                 limit=limit
             )
 
+            # Get total count from database
+            total_count = await self.user_library_repo.count_user_library(
+                user_id=user_id
+            )
+
             return {
                 "items": [self._to_dict(item) for item in items],
-                "total": len(items),
+                "total": total_count,
                 "skip": skip,
                 "limit": limit
             }
@@ -203,9 +208,17 @@ class UserLibraryService:
                 limit=limit
             )
 
+            # Get total count of favorites
+            total_count = await self.user_library_repo.count_user_library(
+                user_id=user_id,
+                is_favorite=True
+            )
+
             return {
                 "items": [self._to_dict(item) for item in favorites],
-                "total": len(favorites)
+                "total": total_count,
+                "skip": skip,
+                "limit": limit
             }
         except Exception as e:
             logger.error(f"Error getting favorites: {e}")
@@ -283,16 +296,22 @@ class UserLibraryService:
             Dict with library statistics
         """
         try:
-            # Get all library items
+            # Get total items count from database
+            total_items = await self.user_library_repo.count_user_library(user_id=user_id)
+
+            # Get favorite count from database
+            favorite_count = await self.user_library_repo.count_user_library(
+                user_id=user_id,
+                is_favorite=True
+            )
+
+            # Get all items for usage calculation (this could be optimized with aggregation)
+            # TODO: Add aggregation method to repository for sum(usage_count)
             all_items = await self.user_library_repo.get_user_library(
                 user_id=user_id,
                 skip=0,
-                limit=10000  # Get all items for stats
+                limit=10000  # Get all items for usage stats
             )
-
-            # Calculate statistics
-            total_items = len(all_items)
-            favorite_count = sum(1 for item in all_items if item.is_favorite)
             total_usage = sum(item.usage_count for item in all_items)
 
             return {

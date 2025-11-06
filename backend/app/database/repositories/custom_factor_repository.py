@@ -283,3 +283,81 @@ class CustomFactorRepository(BaseRepository[CustomFactor]):
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def count_user_factors(
+        self,
+        user_id: str,
+        status: Optional[str] = None
+    ) -> int:
+        """
+        Count user's custom factors.
+
+        Args:
+            user_id: User ID
+            status: Optional status filter
+
+        Returns:
+            Number of user's factors
+        """
+        conditions = [
+            self.model.user_id == user_id,
+            self.model.is_deleted == False
+        ]
+
+        if status is not None:
+            conditions.append(self.model.status == status)
+
+        stmt = select(func.count()).select_from(self.model).where(and_(*conditions))
+
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
+
+    async def count_search_results(
+        self,
+        keyword: str,
+        user_id: Optional[str] = None
+    ) -> int:
+        """
+        Count factors matching search keyword.
+
+        Args:
+            keyword: Search keyword
+            user_id: Optional user ID filter
+
+        Returns:
+            Number of matching factors
+        """
+        conditions = [
+            or_(
+                self.model.factor_name.like(f"%{keyword}%"),
+                self.model.description.like(f"%{keyword}%")
+            ),
+            self.model.is_deleted == False
+        ]
+
+        if user_id:
+            conditions.append(self.model.user_id == user_id)
+
+        stmt = select(func.count()).select_from(self.model).where(and_(*conditions))
+
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
+
+    async def count_public_factors(self) -> int:
+        """
+        Count public published factors.
+
+        Returns:
+            Number of public factors
+        """
+        stmt = select(func.count()).select_from(self.model).where(
+            and_(
+                self.model.is_public == True,
+                self.model.status == FactorStatus.PUBLISHED.value,
+                self.model.is_deleted == False
+            )
+        )
+
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
+

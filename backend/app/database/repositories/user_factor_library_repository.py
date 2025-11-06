@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from loguru import logger
-from sqlalchemy import select, and_, update
+from sqlalchemy import select, and_, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models.indicator import UserFactorLibrary, LibraryItemStatus
@@ -180,3 +180,36 @@ class UserFactorLibraryRepository(BaseRepository[UserFactorLibrary]):
 
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def count_user_library(
+        self,
+        user_id: str,
+        status: Optional[str] = None,
+        is_favorite: Optional[bool] = None
+    ) -> int:
+        """
+        Count user's library items with filters.
+
+        Args:
+            user_id: User ID
+            status: Optional status filter
+            is_favorite: Optional favorite filter
+
+        Returns:
+            Number of matching library items
+        """
+        conditions = [
+            self.model.user_id == user_id,
+            self.model.is_deleted == False
+        ]
+
+        if status:
+            conditions.append(self.model.status == status)
+
+        if is_favorite is not None:
+            conditions.append(self.model.is_favorite == is_favorite)
+
+        stmt = select(func.count()).select_from(self.model).where(and_(*conditions))
+
+        result = await self.session.execute(stmt)
+        return result.scalar_one()

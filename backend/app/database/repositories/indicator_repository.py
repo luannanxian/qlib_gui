@@ -105,6 +105,33 @@ class IndicatorRepository(BaseRepository[IndicatorComponent]):
         logger.debug(f"Search '{keyword}' found {len(indicators)} indicators")
         return indicators
 
+    async def count_search_results(self, keyword: str) -> int:
+        """
+        Count indicators matching search keyword.
+
+        Args:
+            keyword: Search keyword
+
+        Returns:
+            Number of matching indicators
+        """
+        search_pattern = f"%{keyword}%"
+
+        stmt = select(func.count()).select_from(IndicatorComponent).where(
+            IndicatorComponent.is_deleted == False,
+            or_(
+                IndicatorComponent.name_zh.like(search_pattern),
+                IndicatorComponent.name_en.like(search_pattern),
+                IndicatorComponent.code.like(search_pattern)
+            )
+        )
+
+        result = await self.session.execute(stmt)
+        count = result.scalar_one()
+
+        logger.debug(f"Search '{keyword}' has {count} total results")
+        return count
+
     async def get_popular_indicators(
         self,
         limit: int = 10,
