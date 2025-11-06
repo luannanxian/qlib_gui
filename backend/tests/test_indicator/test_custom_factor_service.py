@@ -9,6 +9,7 @@ import pytest_asyncio
 from typing import Dict, Any
 
 from app.database.models.indicator import FactorStatus
+from app.modules.indicator.exceptions import ValidationError, ConflictError
 
 
 @pytest_asyncio.fixture
@@ -31,7 +32,10 @@ class TestCustomFactorService:
 
     async def test_create_factor(self, custom_factor_service, sample_factor_data):
         """测试创建自定义因子"""
-        result = await custom_factor_service.create_factor(sample_factor_data)
+        result = await custom_factor_service.create_factor(
+            factor_data=sample_factor_data,
+            authenticated_user_id="user123"
+        )
 
         assert result is not None
         assert "factor" in result
@@ -203,3 +207,44 @@ class TestCustomFactorService:
         success = await custom_factor_service.delete_factor(created.id, "other_user")
 
         assert success is False
+
+    async def test_create_factor_missing_required_fields(self, custom_factor_service):
+        """测试创建因子缺少必需字段"""
+        incomplete_data = {
+            "factor_name": "Test Factor"
+            # Missing formula and formula_language
+        }
+
+        with pytest.raises(ValidationError, match="Missing required fields"):
+            await custom_factor_service.create_factor(
+                factor_data=incomplete_data,
+                authenticated_user_id="user123"
+            )
+
+    async def test_create_factor_invalid_language(self, custom_factor_service):
+        """测试创建因子使用无效的公式语言"""
+        invalid_data = {
+            "factor_name": "Test Factor",
+            "formula": "close / open",
+            "formula_language": "invalid_language"  # Invalid
+        }
+
+        with pytest.raises(ValidationError, match="Invalid formula_language"):
+            await custom_factor_service.create_factor(
+                factor_data=invalid_data,
+                authenticated_user_id="user123"
+            )
+
+    async def test_create_factor_authorization_enforcement(self, custom_factor_service, sample_factor_data):
+        """测试创建因子时强制使用认证用户ID"""
+        # Try to create factor with different user_id in data
+        sample_factor_data["user_id"] = "hacker_user"
+
+        result = await custom_factor_service.create_factor(
+            factor_data=sample_factor_data,
+            authenticated_user_id="legitimate_user"
+        )
+
+        # Should use authenticated_user_id, not the one from factor_data
+        assert result["factor"]["user_id"] == "legitimate_user"
+        assert result["factor"]["user_id"] != "hacker_user"

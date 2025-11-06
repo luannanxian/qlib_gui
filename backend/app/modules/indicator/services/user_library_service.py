@@ -128,13 +128,19 @@ class UserLibraryService:
                 logger.warning(f"Library item not found for user {user_id}, factor {factor_id}")
                 return None
 
-            # Update favorite status directly
-            item.is_favorite = is_favorite
-            await self.user_library_repo.session.commit()
-            await self.user_library_repo.session.refresh(item)
+            # Use repository update method for consistency
+            updated_item = await self.user_library_repo.update(
+                item.id,
+                {"is_favorite": is_favorite},
+                commit=True
+            )
+
+            if not updated_item:
+                logger.error(f"Failed to update library item {item.id}")
+                return None
 
             return {
-                "item": self._to_dict(item),
+                "item": self._to_dict(updated_item),
                 "message": f"Favorite status updated to {is_favorite}"
             }
         except Exception as e:

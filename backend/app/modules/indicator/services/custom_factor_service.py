@@ -6,9 +6,11 @@ Provides high-level operations for managing user-defined custom factors.
 
 from typing import Dict, Any, List, Optional
 from loguru import logger
+from sqlalchemy.exc import IntegrityError
 
 from app.database.repositories.custom_factor_repository import CustomFactorRepository
 from app.database.models.indicator import FactorStatus
+from app.modules.indicator.exceptions import ValidationError, AuthorizationError, ConflictError
 
 
 class CustomFactorService:
@@ -32,25 +34,70 @@ class CustomFactorService:
         """
         self.custom_factor_repo = custom_factor_repo
 
-    async def create_factor(self, factor_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_factor(
+        self,
+        factor_data: Dict[str, Any],
+        authenticated_user_id: str
+    ) -> Dict[str, Any]:
         """
-        Create a new custom factor.
+        Create a new custom factor with input validation.
 
         Args:
             factor_data: Factor creation data
+            authenticated_user_id: ID of authenticated user (from auth context)
 
         Returns:
             Dict with created factor
+
+        Raises:
+            ValidationError: If required fields are missing or invalid
+            ConflictError: If factor with same name already exists for user
         """
         try:
+            # Validate required fields
+            required_fields = ['factor_name', 'formula', 'formula_language']
+            missing = [f for f in required_fields if f not in factor_data or not factor_data[f]]
+            if missing:
+                raise ValidationError(f"Missing required fields: {', '.join(missing)}")
+
+            # Force use authenticated user ID (prevent authorization bypass)
+            factor_data['user_id'] = authenticated_user_id
+
+            # Set default values if not provided
+            factor_data.setdefault('status', FactorStatus.DRAFT.value)
+            factor_data.setdefault('is_public', False)
+
+            # Validate formula language
+            valid_languages = ['qlib_alpha', 'python', 'pandas']
+            if factor_data['formula_language'] not in valid_languages:
+                raise ValidationError(
+                    f"Invalid formula_language. Must be one of: {', '.join(valid_languages)}"
+                )
+
             factor = await self.custom_factor_repo.create(factor_data, commit=True)
+
+            logger.info(
+                f"Factor created successfully",
+                extra={
+                    "factor_id": factor.id,
+                    "user_id": authenticated_user_id,
+                    "factor_name": factor.factor_name
+                }
+            )
 
             return {
                 "factor": self._to_dict(factor),
                 "message": "Factor created successfully"
             }
+        except ValidationError:
+            raise
+        except IntegrityError as e:
+            logger.warning(f"Integrity violation creating factor: {e}")
+            raise ConflictError(
+                f"Factor with name '{factor_data.get('factor_name')}' already exists"
+            ) from e
         except Exception as e:
-            logger.error(f"Error creating factor: {e}")
+            logger.exception(f"Unexpected error creating factor: {e}")
             raise
 
     async def get_user_factors(
