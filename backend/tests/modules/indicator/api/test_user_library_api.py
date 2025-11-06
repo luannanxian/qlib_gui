@@ -22,10 +22,12 @@ Following TDD best practices:
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import patch, AsyncMock
 
 from app.database.models.indicator import (
     CustomFactor, UserFactorLibrary, FactorStatus
 )
+from app.modules.indicator.services.user_library_service import UserLibraryService
 
 
 @pytest.mark.asyncio
@@ -728,3 +730,590 @@ class TestUserLibraryAPIWithCorrelationID:
 
         # ASSERT
         assert response.status_code == 201
+
+
+@pytest.mark.asyncio
+class TestUserLibraryAPIServiceExceptions:
+    """Test service layer exception handling for User Library API.
+
+    This test class ensures that all API endpoints properly handle
+    exceptions from the service layer and return appropriate HTTP
+    status codes and error messages.
+    """
+
+    async def test_get_library_service_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test GET /api/user-library handles service exceptions (line 81-86).
+
+        Verifies that when UserLibraryService.get_user_library raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'get_user_library',
+            new_callable=AsyncMock,
+            side_effect=Exception("Database connection error")
+        ):
+            # ACT
+            response = await async_client.get("/api/user-library")
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to get library" in data["detail"]
+
+    async def test_add_to_library_value_error_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test POST /api/user-library handles ValueError exceptions (line 115-120).
+
+        Verifies that when UserLibraryService.add_to_library raises a
+        ValueError (business logic validation), the API returns HTTP 400
+        with the validation error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'add_to_library',
+            new_callable=AsyncMock,
+            side_effect=ValueError("Factor already exists in library")
+        ):
+            request_data = {"factor_id": "00000000-0000-0000-0000-000000000001"}
+
+            # ACT
+            response = await async_client.post(
+                "/api/user-library",
+                json=request_data
+            )
+
+            # ASSERT
+            assert response.status_code == 400
+            data = response.json()
+            assert "detail" in data
+            assert "Factor already exists in library" in data["detail"]
+
+    async def test_add_to_library_general_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test POST /api/user-library handles general exceptions (line 121-126).
+
+        Verifies that when UserLibraryService.add_to_library raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'add_to_library',
+            new_callable=AsyncMock,
+            side_effect=Exception("Unexpected database error")
+        ):
+            request_data = {"factor_id": "00000000-0000-0000-0000-000000000002"}
+
+            # ACT
+            response = await async_client.post(
+                "/api/user-library",
+                json=request_data
+            )
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to add to library" in data["detail"]
+
+    async def test_toggle_favorite_service_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test PUT /api/user-library/{factor_id}/favorite handles exceptions (line 168-173).
+
+        Verifies that when UserLibraryService.toggle_favorite raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'toggle_favorite',
+            new_callable=AsyncMock,
+            side_effect=Exception("Database update failed")
+        ):
+            factor_id = "00000000-0000-0000-0000-000000000003"
+            request_data = {"is_favorite": True}
+
+            # ACT
+            response = await async_client.put(
+                f"/api/user-library/{factor_id}/favorite",
+                json=request_data
+            )
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to toggle favorite" in data["detail"]
+
+    async def test_remove_from_library_service_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test DELETE /api/user-library/{factor_id} handles exceptions (line 207-213).
+
+        Verifies that when UserLibraryService.remove_from_library raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'remove_from_library',
+            new_callable=AsyncMock,
+            side_effect=Exception("Database deletion failed")
+        ):
+            factor_id = "00000000-0000-0000-0000-000000000004"
+
+            # ACT
+            response = await async_client.delete(
+                f"/api/user-library/{factor_id}"
+            )
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to remove from library" in data["detail"]
+
+    async def test_get_favorites_service_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test GET /api/user-library/favorites handles exceptions (line 245-250).
+
+        Verifies that when UserLibraryService.get_favorites raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'get_favorites',
+            new_callable=AsyncMock,
+            side_effect=Exception("Query execution failed")
+        ):
+            # ACT
+            response = await async_client.get("/api/user-library/favorites")
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to get favorites" in data["detail"]
+
+    async def test_get_most_used_service_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test GET /api/user-library/most-used handles exceptions (line 279-284).
+
+        Verifies that when UserLibraryService.get_most_used raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'get_most_used',
+            new_callable=AsyncMock,
+            side_effect=Exception("Sorting operation failed")
+        ):
+            # ACT
+            response = await async_client.get("/api/user-library/most-used")
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to get most used items" in data["detail"]
+
+    async def test_get_library_stats_service_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test GET /api/user-library/stats handles exceptions (line 308-313).
+
+        Verifies that when UserLibraryService.get_library_stats raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'get_library_stats',
+            new_callable=AsyncMock,
+            side_effect=Exception("Aggregation query failed")
+        ):
+            # ACT
+            response = await async_client.get("/api/user-library/stats")
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to get library stats" in data["detail"]
+
+    async def test_increment_usage_service_exception(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test POST /api/user-library/{factor_id}/increment-usage handles exceptions (line 346-350).
+
+        Verifies that when UserLibraryService.increment_usage raises an
+        unexpected exception, the API returns HTTP 500 with appropriate
+        error message.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'increment_usage',
+            new_callable=AsyncMock,
+            side_effect=Exception("Counter update failed")
+        ):
+            factor_id = "00000000-0000-0000-0000-000000000005"
+
+            # ACT
+            response = await async_client.post(
+                f"/api/user-library/{factor_id}/increment-usage"
+            )
+
+            # ASSERT
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "Failed to increment usage count" in data["detail"]
+
+
+@pytest.mark.asyncio
+class TestUserLibraryAPIEdgeCases:
+    """Test edge cases and boundary conditions for User Library API.
+
+    This test class covers edge cases, boundary conditions, and
+    additional scenarios that enhance test coverage.
+    """
+
+    async def test_toggle_favorite_http_exception_propagation(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test toggle_favorite re-raises HTTPException (line 166-167).
+
+        Verifies that when toggle_favorite encounters an HTTPException
+        (such as 404 not found), it is properly re-raised and not caught
+        by the general exception handler.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'toggle_favorite',
+            new_callable=AsyncMock,
+            return_value=None  # Service returns None when item not found
+        ):
+            factor_id = "00000000-0000-0000-0000-000000000006"
+            request_data = {"is_favorite": True}
+
+            # ACT
+            response = await async_client.put(
+                f"/api/user-library/{factor_id}/favorite",
+                json=request_data
+            )
+
+            # ASSERT
+            assert response.status_code == 404
+            data = response.json()
+            assert "detail" in data
+            assert "Library item not found" in data["detail"]
+
+    async def test_remove_from_library_http_exception_propagation(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test remove_from_library re-raises HTTPException (line 206-207).
+
+        Verifies that when remove_from_library encounters an HTTPException
+        (such as 404 not found), it is properly re-raised and not caught
+        by the general exception handler.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'remove_from_library',
+            new_callable=AsyncMock,
+            return_value=False  # Service returns False when item not found
+        ):
+            factor_id = "00000000-0000-0000-0000-000000000007"
+
+            # ACT
+            response = await async_client.delete(
+                f"/api/user-library/{factor_id}"
+            )
+
+            # ASSERT
+            assert response.status_code == 404
+            data = response.json()
+            assert "detail" in data
+            assert "Library item not found" in data["detail"]
+
+    async def test_increment_usage_success_false_logging(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test increment_usage logs warning when service returns False (line 341-343).
+
+        Verifies that when increment_usage service returns False (indicating
+        the operation didn't succeed but also didn't fail critically), the API
+        still returns 200 but logs a warning. This tests the non-404 path
+        mentioned in the code comment.
+        """
+        # ARRANGE
+        with patch.object(
+            UserLibraryService,
+            'increment_usage',
+            new_callable=AsyncMock,
+            return_value=False  # Simulate operation not successful
+        ):
+            factor_id = "00000000-0000-0000-0000-000000000008"
+
+            # ACT
+            response = await async_client.post(
+                f"/api/user-library/{factor_id}/increment-usage"
+            )
+
+            # ASSERT
+            # Per API implementation: doesn't raise 404, still returns success
+            assert response.status_code == 200
+            data = response.json()
+            assert "message" in data
+            assert "incremented successfully" in data["message"].lower()
+
+    async def test_add_to_library_with_whitespace_factor_id(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test add_to_library rejects whitespace-only factor_id.
+
+        Validates input sanitization per OWASP Input Validation guidelines.
+        Prevents data integrity issues (CWE-20: Improper Input Validation).
+
+        References:
+        - https://cwe.mitre.org/data/definitions/20.html
+        - https://owasp.org/www-project-proactive-controls/v3/en/c5-validate-inputs
+        """
+        # ARRANGE
+        request_data = {"factor_id": "   "}
+
+        # ACT
+        response = await async_client.post(
+            "/api/user-library",
+            json=request_data
+        )
+
+        # ASSERT
+        # Schema validation rejects whitespace-only factor_id
+        assert response.status_code == 422
+        data = response.json()
+        # Custom error handler returns 'details' (plural), not 'detail'
+        assert "details" in data or "detail" in data
+        # Check error message
+        if "details" in data:
+            assert any("factor_id cannot be empty" in str(error) for error in data["details"])
+        else:
+            assert "factor_id cannot be empty" in str(data["detail"])
+
+    async def test_get_library_with_large_skip_value(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test get_library with very large skip value.
+
+        Verifies pagination handles large skip values gracefully.
+        """
+        # ARRANGE
+        skip = 999999
+
+        # ACT
+        response = await async_client.get(
+            f"/api/user-library?skip={skip}"
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        assert data["skip"] == skip
+        # Should return empty list if skip exceeds total items
+        assert isinstance(data["items"], list)
+
+    async def test_get_favorites_with_maximum_limit(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test get_favorites with maximum allowed limit (1000).
+
+        Verifies favorites endpoint respects maximum limit constraint.
+        """
+        # ACT
+        response = await async_client.get(
+            "/api/user-library/favorites?limit=1000"
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        assert data["limit"] == 1000
+
+    async def test_get_most_used_with_minimum_limit(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test get_most_used with minimum allowed limit (1).
+
+        Verifies most-used endpoint respects minimum limit constraint.
+        """
+        # ACT
+        response = await async_client.get(
+            "/api/user-library/most-used?limit=1"
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) <= 1
+
+
+
+@pytest.mark.asyncio
+class TestUserLibraryAPINegativeInputValidation:
+    """Test negative scenarios and input validation for User Library API.
+
+    Parametrized tests for various invalid inputs including:
+    - Invalid UUID formats
+    - Type errors (non-string values)
+    - Extreme values (超长字符串, empty strings)
+    - SQL injection attempts
+    """
+
+    @pytest.mark.parametrize("invalid_factor_id,expected_status,expected_error_keyword", [
+        (None, 422, "field required"),  # Missing field
+        (12345, 422, "string"),  # Integer instead of string
+        (["array"], 422, "string"),  # Array instead of string
+        ("", 422, "at least 1 character"),  # Empty string - updated keyword
+        ("invalid-uuid-format", 422, "valid UUID"),  # Invalid UUID
+        ("x" * 1000, 422, "valid UUID"),  # Extremely long string
+        ("'; DROP TABLE users; --", 422, "valid UUID"),  # SQL injection attempt
+        ("../../../etc/passwd", 422, "valid UUID"),  # Path traversal attempt
+    ])
+    async def test_add_to_library_invalid_factor_id_types(
+        self,
+        async_client: AsyncClient,
+        invalid_factor_id,
+        expected_status,
+        expected_error_keyword
+    ):
+        """Test add_to_library rejects various invalid factor_id types.
+
+        Validates comprehensive input sanitization per OWASP guidelines.
+        Prevents:
+        - CWE-20: Improper Input Validation
+        - CWE-89: SQL Injection
+        - CWE-22: Path Traversal
+
+        References:
+        - https://cwe.mitre.org/data/definitions/20.html
+        - https://cwe.mitre.org/data/definitions/89.html
+        - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+        """
+        # ARRANGE
+        if invalid_factor_id is None:
+            request_data = {}  # Missing field
+        else:
+            request_data = {"factor_id": invalid_factor_id}
+
+        # ACT
+        response = await async_client.post(
+            "/api/user-library",
+            json=request_data
+        )
+
+        # ASSERT
+        assert response.status_code == expected_status
+        data = response.json()
+        # Custom error handler may return 'details' or 'detail'
+        error_content = data.get("details") or data.get("detail", "")
+        # Check error message contains expected keyword
+        assert expected_error_keyword.lower() in str(error_content).lower()
+
+    @pytest.mark.parametrize("endpoint,method,invalid_uuid", [
+        ("/api/user-library/{uuid}/favorite", "put", "not-a-uuid"),
+        ("/api/user-library/{uuid}", "delete", "12345"),
+        ("/api/user-library/{uuid}/increment-usage", "post", ""),
+    ])
+    async def test_path_parameter_uuid_validation(
+        self,
+        async_client: AsyncClient,
+        endpoint,
+        method,
+        invalid_uuid
+    ):
+        """Test UUID validation in path parameters.
+
+        Verifies endpoints correctly validate UUID format in URL paths.
+        """
+        # ARRANGE
+        url = endpoint.replace("{uuid}", invalid_uuid)
+        request_data = {"is_favorite": True} if method == "put" else None
+
+        # ACT
+        if method == "put":
+            response = await async_client.put(url, json=request_data)
+        elif method == "delete":
+            response = await async_client.delete(url)
+        else:  # post
+            response = await async_client.post(url)
+
+        # ASSERT
+        # FastAPI may return 404 or 422 depending on validation
+        assert response.status_code in [404, 422]
+
+    @pytest.mark.parametrize("skip,limit,expected_status", [
+        (-1, 100, 422),  # Negative skip
+        (0, 0, 422),  # Zero limit
+        (0, -5, 422),  # Negative limit
+        (0, 1001, 422),  # Exceeds max limit (1000)
+        ("abc", 100, 422),  # Non-integer skip
+        (0, "xyz", 422),  # Non-integer limit
+    ])
+    async def test_pagination_parameter_validation(
+        self,
+        async_client: AsyncClient,
+        skip,
+        limit,
+        expected_status
+    ):
+        """Test pagination parameter validation.
+
+        Verifies skip and limit parameters are properly validated.
+        """
+        # ACT
+        response = await async_client.get(
+            f"/api/user-library?skip={skip}&limit={limit}"
+        )
+
+        # ASSERT
+        assert response.status_code == expected_status
+

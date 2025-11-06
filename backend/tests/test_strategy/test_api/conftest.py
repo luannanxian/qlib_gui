@@ -27,7 +27,7 @@ from app.database.repositories.template_rating import TemplateRatingRepository
 from app.database import get_db
 
 # Test database URL (use in-memory SQLite for testing)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_DATABASE_URL = "mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test?charset=utf8mb4"
 
 
 @pytest.fixture(scope="session")

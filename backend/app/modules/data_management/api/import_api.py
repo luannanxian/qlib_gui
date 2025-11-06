@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, s
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.session import get_session
+from app.database import get_db
 from app.database.repositories.import_task import ImportTaskRepository
 from app.database.models.import_task import ImportStatus, ImportType
 from app.modules.data_management.services.import_service import DataImportService
@@ -23,7 +23,8 @@ from app.modules.data_management.schemas.import_schemas import (
     ImportTaskListResponse,
     ImportTaskUpdate,
 )
-from app.modules.common.logging.service import log_api_call
+from app.modules.common.logging import get_logger
+from app.modules.common.logging.decorators import log_async_execution
 from app.config import settings
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
@@ -36,12 +37,12 @@ router = APIRouter(prefix="/api/imports", tags=["imports"])
     summary="Upload file and create import task",
     description="Upload a data file (CSV/Excel) and create an import task for processing"
 )
-@log_api_call
+@log_async_execution(log_args=False)
 async def upload_file(
     file: UploadFile = File(..., description="Data file to upload (CSV/Excel)"),
     task_name: Optional[str] = Form(None, description="Custom task name"),
     user_id: Optional[str] = Form(None, description="User ID"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """
     Upload a file and create an import task.
@@ -143,10 +144,10 @@ async def upload_file(
     summary="Process import task",
     description="Start processing an uploaded import task"
 )
-@log_api_call
+@log_async_execution(log_args=False)
 async def process_import_task(
     task_id: str,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """
     Process an import task.
@@ -198,13 +199,13 @@ async def process_import_task(
     summary="List import tasks",
     description="List all import tasks with optional filtering"
 )
-@log_api_call
+@log_async_execution(log_args=False)
 async def list_import_tasks(
     skip: int = 0,
     limit: int = 100,
     task_status: Optional[ImportStatus] = None,
     user_id: Optional[str] = None,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """
     List import tasks with pagination and filtering.
@@ -253,10 +254,10 @@ async def list_import_tasks(
     summary="Get import task",
     description="Get details of a specific import task"
 )
-@log_api_call
+@log_async_execution(log_args=False)
 async def get_import_task(
     task_id: str,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """
     Get import task by ID.
@@ -286,11 +287,11 @@ async def get_import_task(
     summary="Delete import task",
     description="Delete an import task (soft delete by default)"
 )
-@log_api_call
+@log_async_execution(log_args=False)
 async def delete_import_task(
     task_id: str,
     hard_delete: bool = False,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """
     Delete an import task.
@@ -332,9 +333,9 @@ async def delete_import_task(
     summary="Get active task count",
     description="Get count of active (not completed/failed) import tasks"
 )
-@log_api_call
+@log_async_execution(log_args=False)
 async def get_active_task_count(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_db)
 ):
     """
     Get count of active import tasks.

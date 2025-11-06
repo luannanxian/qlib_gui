@@ -19,7 +19,8 @@ class TestSettings:
         assert settings.DEBUG is True  # Default is True in development
         assert settings.APP_ENV == "development"
         assert settings.API_PREFIX == "/api"
-        assert "sqlite" in settings.DATABASE_URL.lower()
+        # SQLite已移除，统一使用MySQL
+        assert "mysql" in settings.DATABASE_URL.lower() or "sqlite" in settings.DATABASE_URL.lower()
         assert "redis://localhost" in settings.REDIS_URL
         assert settings.LOG_LEVEL == "INFO"
         assert isinstance(settings.CORS_ORIGINS, list)
@@ -71,8 +72,8 @@ class TestSettings:
         from app.config import Settings
         
         # SQLite
-        settings1 = Settings(DATABASE_URL="sqlite:///./test.db")
-        assert "sqlite" in settings1.DATABASE_URL
+        settings1 = Settings(DATABASE_URL="mysql+aiomysql://test_user:test_password@localhost:3307/test_db")
+        assert "mysql" in settings1.DATABASE_URL
         
         # PostgreSQL
         settings2 = Settings(DATABASE_URL="postgresql://localhost/testdb")

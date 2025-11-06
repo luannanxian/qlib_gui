@@ -6,10 +6,10 @@ Database selection controlled by DATABASE_URL_TEST environment variable.
 
 Environment Setup:
     1. SQLite (default, fast):
-       export DATABASE_URL_TEST=sqlite+aiosqlite:///:memory:
+       export DATABASE_URL_TEST=mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test?charset=utf8mb4
 
     2. MySQL (integration testing):
-       export DATABASE_URL_TEST=mysql+aiomysql://test_user:test_password@localhost:3307/qlib_ui_test
+       export DATABASE_URL_TEST=mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test
 
 Usage:
     # Run with SQLite (default)
@@ -17,7 +17,7 @@ Usage:
 
     # Run with MySQL
     docker-compose -f docker-compose.test.yml up -d
-    export DATABASE_URL_TEST=mysql+aiomysql://test_user:test_password@localhost:3307/qlib_ui_test
+    export DATABASE_URL_TEST=mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test
     pytest tests/modules/indicator/repositories/
 """
 
@@ -47,12 +47,11 @@ load_dotenv(".env.test")
 # Default to SQLite in-memory for fast testing
 TEST_DATABASE_URL = os.getenv(
     "DATABASE_URL_TEST",
-    "sqlite+aiosqlite:///:memory:"
+    "mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test?charset=utf8mb4"
 )
 
 # Determine database type
 IS_MYSQL = "mysql" in TEST_DATABASE_URL
-IS_SQLITE = "sqlite" in TEST_DATABASE_URL
 
 # Connection pool settings from environment (with defaults)
 TEST_DB_POOL_SIZE = int(os.getenv("TEST_DB_POOL_SIZE", "5"))
@@ -186,7 +185,6 @@ def pytest_configure(config):
         "markers", "mysql: mark test to run only with MySQL database"
     )
     config.addinivalue_line(
-        "markers", "sqlite: mark test to run only with SQLite database"
     )
 
 
@@ -199,8 +197,6 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "mysql" in item.keywords and IS_SQLITE:
             item.add_marker(pytest.mark.skip(reason="MySQL-only test, running with SQLite"))
-        if "sqlite" in item.keywords and IS_MYSQL:
-            item.add_marker(pytest.mark.skip(reason="SQLite-only test, running with MySQL"))
 
 
 # Display test configuration on startup

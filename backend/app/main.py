@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.modules.user_onboarding.api import mode_api
-from app.modules.data_management.api import dataset_api, preprocessing_api
+from app.modules.data_management.api import dataset_api, preprocessing_api, import_api
 from app.modules.strategy.api import strategy_api
 from app.modules.indicator.api import indicator_api, custom_factor_api, user_library_api
 
@@ -152,6 +152,7 @@ register_exception_handlers(app)
 app.include_router(mode_api.router, prefix="/api/user", tags=["user"])
 app.include_router(dataset_api.router)
 app.include_router(preprocessing_api.router)
+app.include_router(import_api.router)
 app.include_router(strategy_api.router)
 app.include_router(indicator_api.router)
 app.include_router(custom_factor_api.router)

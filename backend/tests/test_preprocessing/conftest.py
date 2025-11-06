@@ -30,7 +30,7 @@ from app.database.repositories.preprocessing import (
 import tempfile
 import os
 TEST_DB_FILE = os.path.join(tempfile.gettempdir(), "test_preprocessing.db")
-TEST_DATABASE_URL = f"sqlite+aiosqlite:///{TEST_DB_FILE}"
+TEST_DATABASE_URL = "mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test?charset=utf8mb4"
 
 
 @pytest.fixture(scope="session")

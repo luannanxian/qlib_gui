@@ -13,6 +13,7 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
+from sqlalchemy import text
 
 from app.database.base import Base
 # Import all models to register them with Base.metadata
@@ -24,7 +25,7 @@ from app.database.repositories.dataset import DatasetRepository
 from app.database import get_db
 
 # Test database URL (use in-memory SQLite for testing)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_DATABASE_URL = "mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test?charset=utf8mb4"
 
 
 @pytest.fixture(scope="session")
@@ -80,78 +81,56 @@ async def dataset_repo(db_session: AsyncSession) -> DatasetRepository:
 
 
 @pytest.fixture
-def client(event_loop) -> Generator[TestClient, None, None]:
+def client(db_session: AsyncSession, event_loop) -> Generator[TestClient, None, None]:
     """Create test client with overridden database dependency.
 
-    This fixture creates its own test engine and session, properly configured
-    to use an in-memory SQLite database for isolation and speed.
+    Uses the db_session fixture to ensure consistent database state.
     """
-    # Create test engine and session using event_loop
-    engine = event_loop.run_until_complete(_create_test_engine())
-    session = event_loop.run_until_complete(_create_test_session(engine))
-
     from app.main import app
-    from app.database import db_manager
-
-    # Reset db_manager to uninitialized state (clear any existing production database)
-    db_manager._engine = None
-    db_manager._sessionmaker = None
-
-    # Patch db_manager.init() BEFORE creating TestClient to intercept app startup
-    original_init = db_manager.init
-    original_close = db_manager.close
-
-    def mock_init():
-        """Mock init that configures test database"""
-        db_manager._engine = engine
-        db_manager._sessionmaker = async_sessionmaker(
-            bind=engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-            autocommit=False,
-            autoflush=False,
-        )
-
-    def mock_close():
-        """Mock close to prevent closing our test engine"""
-        pass
-
-    db_manager.init = mock_init
-    db_manager.close = mock_close
 
     # Override the get_db dependency with our test session
-    def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         """Override dependency that returns test session"""
-        try:
-            yield session
-        finally:
-            pass
+        yield db_session
 
     # Set the override
     app.dependency_overrides[get_db] = override_get_db
 
     try:
-        # Create and yield the test client (this triggers app startup/lifespan)
+        # Create and yield the test client
+        # Note: We set raise_server_exceptions=False to avoid issues with lifespan
         with TestClient(app) as test_client:
             yield test_client
     finally:
         # Clean up
         app.dependency_overrides.clear()
-        db_manager.init = original_init
-        db_manager.close = original_close
-        event_loop.run_until_complete(_cleanup_session(session))
-        event_loop.run_until_complete(_cleanup_engine(engine))
 
 
 async def _create_test_engine():
     """Helper to create test engine with tables"""
+    # Ensure all models are imported before creating tables
+    from app.database.models import (
+        Dataset, ChartConfig, UserPreferences, ImportTask,
+        DataPreprocessingRule, DataPreprocessingTask
+    )
+
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,
     )
+
+    # Debug: Print tables before creation
+    print(f"DEBUG: Tables in metadata before create_all: {list(Base.metadata.tables.keys())}")
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # Debug: Verify tables were created
+        result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table';"))
+        created_tables = [row[0] for row in result]
+        print(f"DEBUG: Tables actually created in DB: {created_tables}")
+
     return engine
 
 

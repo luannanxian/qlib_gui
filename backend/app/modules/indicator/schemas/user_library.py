@@ -2,7 +2,8 @@
 
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from uuid import UUID
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class UserLibraryItemResponse(BaseModel):
@@ -80,14 +81,41 @@ class AddToLibraryRequest(BaseModel):
     Schema for adding a factor to user's library.
 
     Attributes:
-        factor_id: Factor ID to add to library
+        factor_id: Factor UUID to add to library
     """
-    factor_id: str = Field(..., min_length=1, description="Factor ID to add")
+    factor_id: str = Field(..., min_length=1, description="Factor UUID to add")
+
+    @field_validator('factor_id')
+    @classmethod
+    def validate_factor_id(cls, v: str) -> str:
+        """Validate factor_id is a valid UUID and not empty/whitespace.
+
+        Validates per OWASP Input Validation guidelines.
+        Prevents data integrity issues (CWE-20: Improper Input Validation).
+
+        References:
+        - https://cwe.mitre.org/data/definitions/20.html
+        - https://owasp.org/www-project-proactive-controls/v3/en/c5-validate-inputs
+        """
+        # Remove leading/trailing whitespace
+        v = v.strip()
+
+        # Check if empty after stripping
+        if not v:
+            raise ValueError("factor_id cannot be empty or whitespace")
+
+        # Validate UUID format
+        try:
+            UUID(v)
+        except ValueError:
+            raise ValueError(f"factor_id must be a valid UUID format, got: {v}")
+
+        return v
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "factor_id": "factor_001"
+                "factor_id": "550e8400-e29b-41d4-a716-446655440000"
             }
         }
     )
