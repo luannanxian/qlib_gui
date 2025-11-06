@@ -34,7 +34,6 @@ class UserFactorLibraryRepository(BaseRepository[UserFactorLibrary]):
     async def get_user_library(
         self,
         user_id: str,
-        item_type: Optional[str] = None,  # "factor" or "indicator"
         status: Optional[str] = None,
         is_favorite: Optional[bool] = None,
         skip: int = 0,
@@ -47,11 +46,6 @@ class UserFactorLibraryRepository(BaseRepository[UserFactorLibrary]):
             self.model.user_id == user_id,
             self.model.is_deleted == False
         ]
-
-        if item_type == "factor":
-            conditions.append(self.model.factor_id.isnot(None))
-        elif item_type == "indicator":
-            conditions.append(self.model.component_id.isnot(None))
 
         if status:
             conditions.append(self.model.status == status)
@@ -84,17 +78,15 @@ class UserFactorLibraryRepository(BaseRepository[UserFactorLibrary]):
         self,
         user_id: str,
         factor_id: Optional[str] = None,
-        component_id: Optional[str] = None,
         is_favorite: bool = False
     ) -> Optional[UserFactorLibrary]:
         """Add item to user's library"""
-        if not (factor_id or component_id) or (factor_id and component_id):
+        if not factor_id:
             return None
 
         existing = await self.find_library_item(
             user_id=user_id,
-            factor_id=factor_id,
-            component_id=component_id
+            factor_id=factor_id
         )
 
         if existing:
@@ -107,7 +99,6 @@ class UserFactorLibraryRepository(BaseRepository[UserFactorLibrary]):
         library_data = {
             "user_id": user_id,
             "factor_id": factor_id,
-            "component_id": component_id,
             "is_favorite": is_favorite,
             "status": LibraryItemStatus.ACTIVE.value
         }
@@ -145,10 +136,9 @@ class UserFactorLibraryRepository(BaseRepository[UserFactorLibrary]):
     async def find_library_item(
         self,
         user_id: str,
-        factor_id: Optional[str] = None,
-        component_id: Optional[str] = None
+        factor_id: Optional[str] = None
     ) -> Optional[UserFactorLibrary]:
-        """Find library item by user and factor/component"""
+        """Find library item by user and factor"""
         conditions = [
             self.model.user_id == user_id,
             self.model.is_deleted == False
@@ -156,8 +146,6 @@ class UserFactorLibraryRepository(BaseRepository[UserFactorLibrary]):
 
         if factor_id:
             conditions.append(self.model.factor_id == factor_id)
-        if component_id:
-            conditions.append(self.model.component_id == component_id)
 
         stmt = select(self.model).where(and_(*conditions)).limit(1)
 

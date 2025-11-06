@@ -23,6 +23,10 @@ from app.database.repositories.custom_factor_repository import CustomFactorRepos
 from app.database.repositories.factor_validation_repository import FactorValidationResultRepository
 from app.database.repositories.user_factor_library_repository import UserFactorLibraryRepository
 
+from app.modules.indicator.services.indicator_service import IndicatorService
+from app.modules.indicator.services.custom_factor_service import CustomFactorService
+from app.modules.indicator.services.user_library_service import UserLibraryService
+
 # Test database URL (use file-based SQLite for testing to avoid in-memory issues)
 import tempfile
 import os
@@ -106,3 +110,21 @@ async def factor_validation_repo(db_session: AsyncSession) -> FactorValidationRe
 async def user_library_repo(db_session: AsyncSession) -> UserFactorLibraryRepository:
     """Create a UserFactorLibraryRepository instance for testing"""
     return UserFactorLibraryRepository(db_session)
+
+
+@pytest_asyncio.fixture
+async def indicator_service(indicator_repo: IndicatorRepository) -> IndicatorService:
+    """Create an IndicatorService instance for testing"""
+    return IndicatorService(indicator_repo)
+
+
+@pytest_asyncio.fixture
+async def custom_factor_service(custom_factor_repo: CustomFactorRepository) -> CustomFactorService:
+    """Create a CustomFactorService instance for testing"""
+    return CustomFactorService(custom_factor_repo)
+
+
+@pytest_asyncio.fixture
+async def user_library_service(user_library_repo: UserFactorLibraryRepository) -> UserLibraryService:
+    """Create a UserLibraryService instance for testing"""
+    return UserLibraryService(user_library_repo)
