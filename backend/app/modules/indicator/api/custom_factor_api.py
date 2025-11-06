@@ -71,14 +71,28 @@ async def create_factor(
     Returns:
         CustomFactorResponse with created factor
     """
+    from app.modules.indicator.exceptions import ValidationError, ConflictError
+
     try:
         result = await service.create_factor(
             factor_data=factor_data.model_dump(),
             authenticated_user_id=user_id
         )
         return result["factor"]
-    except ValueError as e:
+    except ValidationError as e:
         logger.error(f"Validation error creating factor: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except ConflictError as e:
+        logger.error(f"Conflict error creating factor: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except ValueError as e:
+        logger.error(f"Value error creating factor: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -94,7 +108,7 @@ async def create_factor(
 @router.get("", response_model=CustomFactorListResponse)
 @log_async_execution(level="INFO")
 async def list_user_factors(
-    status: Optional[str] = Query(None, description="Filter by status (draft, published, etc.)"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status (draft, published, etc.)"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     user_id: str = Depends(get_current_user_id),
@@ -105,7 +119,7 @@ async def list_user_factors(
     List current user's custom factors.
 
     Args:
-        status: Optional status filter (draft, published, etc.)
+        status_filter: Optional status filter (draft, published, etc.)
         skip: Number of records to skip (pagination)
         limit: Maximum number of records to return
         user_id: Current user ID (from authentication)
@@ -118,7 +132,7 @@ async def list_user_factors(
     try:
         result = await service.get_user_factors(
             user_id=user_id,
-            status=status,
+            status=status_filter,
             skip=skip,
             limit=limit
         )
@@ -197,6 +211,8 @@ async def update_factor(
     Raises:
         404: If factor not found or user not authorized
     """
+    from app.modules.indicator.exceptions import ValidationError, AuthorizationError
+
     try:
         result = await service.update_factor(
             factor_id=factor_id,
@@ -209,10 +225,22 @@ async def update_factor(
                 detail=f"Factor with id '{factor_id}' not found or access denied"
             )
         return result["factor"]
+    except AuthorizationError as e:
+        logger.warning(f"Authorization error updating factor: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Factor with id '{factor_id}' not found or access denied"
+        )
+    except ValidationError as e:
+        logger.error(f"Validation error updating factor: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except HTTPException:
         raise
     except ValueError as e:
-        logger.error(f"Validation error updating factor: {e}")
+        logger.error(f"Value error updating factor: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -290,7 +318,7 @@ async def publish_factor(
     try:
         result = await service.publish_factor(
             factor_id=factor_id,
-            authenticated_user_id=user_id,
+            user_id=user_id,
             is_public=publish_data.is_public
         )
         if not result:

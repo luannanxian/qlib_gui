@@ -7,12 +7,12 @@ Provides fixtures for:
 - Database session (reused from repository conftest)
 """
 
-# Import fixtures from repository conftest
-pytest_plugins = ["tests.modules.indicator.repositories.conftest"]
-
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Import fixtures from repository conftest
+from tests.modules.indicator.repositories.conftest import *
 
 from app.database.models.indicator import (
     IndicatorComponent, CustomFactor, UserFactorLibrary,

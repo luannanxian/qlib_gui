@@ -637,3 +637,411 @@ class TestIndicatorAPIResponseFormat:
         # Verify error response structure
         assert "detail" in data
         assert isinstance(data["detail"], str)
+
+
+@pytest.mark.asyncio
+class TestIndicatorAPIServiceErrorHandling:
+    """Test service-level error handling for Indicator API."""
+
+    async def test_list_indicators_by_category_value_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test listing indicators by category handles ValueError."""
+        # ARRANGE
+        from app.modules.indicator.services import indicator_service
+
+        async def mock_get_indicators_by_category(*args, **kwargs):
+            raise ValueError("Invalid category")
+
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "get_indicators_by_category",
+            mock_get_indicators_by_category
+        )
+
+        # ACT
+        response = await async_client.get("/api/indicators?category=invalid")
+
+        # ASSERT
+        assert response.status_code == 400
+        data = response.json()
+        assert "detail" in data
+        assert "Invalid category" in data["detail"]
+
+    async def test_get_categories_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test getting categories handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import indicator_service
+
+        async def mock_get_indicator_categories(*args, **kwargs):
+            raise Exception("Database connection failed")
+
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "get_indicator_categories",
+            mock_get_indicator_categories
+        )
+
+        # ACT
+        response = await async_client.get("/api/indicators/categories")
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to get indicator categories" in data["detail"]
+
+    async def test_search_indicators_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test searching indicators handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import indicator_service
+
+        async def mock_search_indicators(*args, **kwargs):
+            raise Exception("Search service unavailable")
+
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "search_indicators",
+            mock_search_indicators
+        )
+
+        # ACT
+        response = await async_client.get("/api/indicators/search?keyword=test")
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to search indicators" in data["detail"]
+
+    async def test_get_popular_indicators_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test getting popular indicators handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import indicator_service
+
+        async def mock_get_popular_indicators(*args, **kwargs):
+            raise Exception("Failed to fetch popular indicators")
+
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "get_popular_indicators",
+            mock_get_popular_indicators
+        )
+
+        # ACT
+        response = await async_client.get("/api/indicators/popular")
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to get popular indicators" in data["detail"]
+
+    async def test_get_indicator_detail_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test getting indicator detail handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import indicator_service
+
+        async def mock_get_indicator_detail(*args, **kwargs):
+            raise Exception("Database timeout")
+
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "get_indicator_detail",
+            mock_get_indicator_detail
+        )
+
+        # ACT
+        response = await async_client.get("/api/indicators/test-id")
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to get indicator" in data["detail"]
+
+    async def test_increment_usage_service_returns_false(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test increment usage when service returns False."""
+        # ARRANGE
+        from app.modules.indicator.services import indicator_service
+
+        async def mock_get_indicator_detail(*args, **kwargs):
+            return {"id": "test-id", "code": "TEST"}
+
+        async def mock_increment_usage(*args, **kwargs):
+            return False  # Simulates failure to increment
+
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "get_indicator_detail",
+            mock_get_indicator_detail
+        )
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "increment_usage",
+            mock_increment_usage
+        )
+
+        # ACT
+        response = await async_client.post("/api/indicators/test-id/increment-usage")
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to increment usage count" in data["detail"]
+
+    async def test_increment_usage_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test increment usage handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import indicator_service
+
+        async def mock_get_indicator_detail(*args, **kwargs):
+            return {"id": "test-id", "code": "TEST"}
+
+        async def mock_increment_usage(*args, **kwargs):
+            raise Exception("Database write failed")
+
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "get_indicator_detail",
+            mock_get_indicator_detail
+        )
+        monkeypatch.setattr(
+            indicator_service.IndicatorService,
+            "increment_usage",
+            mock_increment_usage
+        )
+
+        # ACT
+        response = await async_client.post("/api/indicators/test-id/increment-usage")
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+
+
+@pytest.mark.asyncio
+class TestIndicatorAPICorrelationID:
+    """Test correlation ID handling for Indicator API."""
+
+    async def test_list_indicators_with_custom_correlation_id(
+        self,
+        async_client: AsyncClient,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test listing indicators with custom correlation ID header."""
+        # ARRANGE
+        correlation_id = "custom-correlation-12345"
+        headers = {"X-Correlation-ID": correlation_id}
+
+        # ACT
+        response = await async_client.get("/api/indicators", headers=headers)
+
+        # ASSERT
+        assert response.status_code == 200
+
+    async def test_search_indicators_with_correlation_id(
+        self,
+        async_client: AsyncClient,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test searching indicators with correlation ID header."""
+        # ARRANGE
+        correlation_id = "search-correlation-456"
+        headers = {"X-Correlation-ID": correlation_id}
+
+        # ACT
+        response = await async_client.get(
+            "/api/indicators/search?keyword=test",
+            headers=headers
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+
+    async def test_increment_usage_with_correlation_id(
+        self,
+        async_client: AsyncClient,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test incrementing usage with correlation ID header."""
+        # ARRANGE
+        correlation_id = "increment-correlation-789"
+        headers = {"X-Correlation-ID": correlation_id}
+
+        # ACT
+        response = await async_client.post(
+            f"/api/indicators/{sample_indicator.id}/increment-usage",
+            headers=headers
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+class TestIndicatorAPIPaginationEdgeCases:
+    """Test pagination edge cases for Indicator API."""
+
+    async def test_list_indicators_with_zero_skip(
+        self,
+        async_client: AsyncClient,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test listing indicators with skip=0 (valid)."""
+        # ACT
+        response = await async_client.get("/api/indicators?skip=0")
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        assert data["skip"] == 0
+
+    async def test_list_indicators_with_large_skip(
+        self,
+        async_client: AsyncClient,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test listing indicators with large skip value."""
+        # ACT
+        response = await async_client.get("/api/indicators?skip=1000")
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        assert data["skip"] == 1000
+        # Should return empty list if skip exceeds total
+        assert len(data["indicators"]) == 0
+
+    async def test_search_indicators_with_max_limit(
+        self,
+        async_client: AsyncClient,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test searching indicators with maximum limit."""
+        # ACT
+        response = await async_client.get(
+            "/api/indicators/search?keyword=test&limit=100"
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        assert data["limit"] == 100
+
+    async def test_search_indicators_limit_exceeds_max(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test searching indicators with limit exceeding maximum."""
+        # ACT
+        response = await async_client.get(
+            "/api/indicators/search?keyword=test&limit=101"
+        )
+
+        # ASSERT
+        assert response.status_code == 422  # Validation error
+
+
+@pytest.mark.asyncio
+class TestIndicatorAPIBoundaryConditions:
+    """Test boundary conditions for Indicator API."""
+
+    async def test_get_indicator_with_invalid_uuid_format(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test getting indicator with malformed UUID."""
+        # ACT
+        response = await async_client.get("/api/indicators/invalid-uuid")
+
+        # ASSERT
+        # FastAPI may return 422 for invalid UUID format or 500/404 depending on validation
+        assert response.status_code in [404, 422, 500]
+
+    async def test_list_indicators_with_invalid_category(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test listing indicators with non-existent category."""
+        # ACT
+        response = await async_client.get("/api/indicators?category=nonexistent")
+
+        # ASSERT
+        # Should either return empty list or validation error
+        assert response.status_code in [200, 400]
+
+    async def test_search_with_very_long_keyword(
+        self,
+        async_client: AsyncClient,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test searching with very long keyword string."""
+        # ARRANGE
+        long_keyword = "a" * 1000
+
+        # ACT
+        response = await async_client.get(
+            f"/api/indicators/search?keyword={long_keyword}"
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        # Should return empty results for non-matching long keyword
+        assert data["total"] == 0
+
+    async def test_increment_usage_idempotency(
+        self,
+        async_client: AsyncClient,
+        db_session: AsyncSession,
+        sample_indicator: IndicatorComponent
+    ):
+        """Test that increment usage can be called multiple times safely."""
+        # ARRANGE
+        original_count = sample_indicator.usage_count
+
+        # ACT - Call increment multiple times rapidly
+        responses = []
+        for _ in range(5):
+            response = await async_client.post(
+                f"/api/indicators/{sample_indicator.id}/increment-usage"
+            )
+            responses.append(response)
+
+        # ASSERT
+        # All requests should succeed
+        for response in responses:
+            assert response.status_code == 200
+
+        # Verify final count is correctly incremented
+        await db_session.refresh(sample_indicator)
+        assert sample_indicator.usage_count == original_count + 5

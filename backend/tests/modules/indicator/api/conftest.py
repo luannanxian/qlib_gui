@@ -4,15 +4,17 @@ Pytest Configuration for Indicator API Tests
 Provides fixtures for testing indicator API endpoints with proper async database setup.
 """
 
-# Import fixtures from services conftest (which imports from repositories conftest)
-# This gives us access to all test data fixtures
-pytest_plugins = ["tests.modules.indicator.services.conftest"]
-
 import asyncio
 from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
+
+# Import fixtures from parent conftest files
+# This is the new way to share fixtures without using pytest_plugins
+# The fixtures from conftest.py in parent directories are automatically discovered
+from tests.modules.indicator.repositories.conftest import *
+from tests.modules.indicator.services.conftest import *
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker

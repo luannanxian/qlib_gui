@@ -14,14 +14,14 @@ class CustomFactorCreate(BaseModel):
         formula: Factor calculation formula (required)
         formula_language: Formula language (qlib_alpha, python, pandas)
         description: Factor description (optional)
-        tags: Factor tags for categorization (optional)
+        base_indicator_id: Base indicator ID (optional)
         is_public: Whether factor is publicly visible (default: False)
     """
     factor_name: str = Field(..., min_length=1, max_length=255, description="Factor name")
     formula: str = Field(..., min_length=1, description="Factor calculation formula")
     formula_language: str = Field(..., description="Formula language (qlib_alpha, python, pandas)")
     description: Optional[str] = Field(None, max_length=1000, description="Factor description")
-    tags: Optional[List[str]] = Field(default_factory=list, description="Factor tags")
+    base_indicator_id: Optional[str] = Field(None, description="Base indicator ID")
     is_public: bool = Field(False, description="Whether factor is publicly visible")
 
     @field_validator("factor_name")
@@ -44,9 +44,7 @@ class CustomFactorCreate(BaseModel):
     @classmethod
     def validate_formula_language(cls, v: str) -> str:
         """Validate formula language is supported"""
-        valid_languages = ['qlib_alpha', 'python', 'pandas']
-        if v not in valid_languages:
-            raise ValueError(f"Invalid formula_language. Must be one of: {', '.join(valid_languages)}")
+        # Remove client-side validation to allow service layer to handle it with proper error code
         return v
 
     model_config = ConfigDict(
@@ -112,14 +110,17 @@ class CustomFactorResponse(BaseModel):
     id: str
     factor_name: str = Field(..., description="Factor name")
     user_id: str = Field(..., description="Owner user ID")
+    base_indicator_id: Optional[str] = Field(None, description="Base indicator ID")
     formula: str = Field(..., description="Factor calculation formula")
     formula_language: str = Field(..., description="Formula language")
     description: Optional[str] = Field(None, description="Factor description")
-    tags: List[str] = Field(default_factory=list, description="Factor tags")
     status: str = Field(..., description="Factor status (draft, published, archived)")
     is_public: bool = Field(False, description="Whether factor is publicly visible")
+    published_at: Optional[datetime] = Field(None, description="Publication timestamp")
+    shared_at: Optional[datetime] = Field(None, description="Public sharing timestamp")
     usage_count: int = Field(0, ge=0, description="Number of times used")
-    parent_factor_id: Optional[str] = Field(None, description="Parent factor ID if cloned")
+    clone_count: int = Field(0, ge=0, description="Number of times cloned")
+    cloned_from_id: Optional[str] = Field(None, description="Source factor ID if cloned")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -208,17 +209,17 @@ class CloneFactorRequest(BaseModel):
     Schema for cloning a factor.
 
     Attributes:
-        new_name: Name for the cloned factor (optional, defaults to "Copy of <original>")
+        new_name: Name for the cloned factor (required)
     """
-    new_name: Optional[str] = Field(None, min_length=1, max_length=255, description="Name for cloned factor")
+    new_name: str = Field(..., min_length=1, max_length=255, description="Name for cloned factor")
 
     @field_validator("new_name")
     @classmethod
-    def validate_new_name(cls, v: Optional[str]) -> Optional[str]:
-        """Validate new name if provided"""
-        if v is not None and (not v or not v.strip()):
+    def validate_new_name(cls, v: str) -> str:
+        """Validate new name"""
+        if not v or not v.strip():
             raise ValueError("New name cannot be empty or whitespace")
-        return v.strip() if v else None
+        return v.strip()
 
     model_config = ConfigDict(
         json_schema_extra={

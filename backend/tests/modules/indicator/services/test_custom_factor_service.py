@@ -334,11 +334,12 @@ class TestCustomFactorServiceGetDetail:
 
         # ASSERT
         assert result is not None
-        assert result["id"] == factor_id
-        assert result["factor_name"] == "我的动量因子"
-        assert "formula" in result
-        assert "status" in result
-        assert "user_id" in result
+        assert "factor" in result
+        assert result["factor"]["id"] == factor_id
+        assert result["factor"]["factor_name"] == "我的动量因子"
+        assert "formula" in result["factor"]
+        assert "status" in result["factor"]
+        assert "user_id" in result["factor"]
 
     async def test_get_factor_detail_nonexistent(
         self,
@@ -525,7 +526,7 @@ class TestCustomFactorServiceClone:
         result = await custom_factor_service.clone_factor(
             source_id,
             new_user_id,
-            new_factor_name=new_name
+            new_name=new_name
         )
 
         # ASSERT

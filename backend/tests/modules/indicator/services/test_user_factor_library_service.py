@@ -19,6 +19,7 @@ Following TDD best practices:
 """
 
 import pytest
+from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models.indicator import UserFactorLibrary, CustomFactor, FactorStatus
@@ -898,3 +899,243 @@ class TestUserLibraryServiceEdgeCases:
         # Should only count non-deleted items
         assert result["total_items"] == 1
         assert result["total_usage"] == 10  # Only item1's usage
+
+
+@pytest.mark.asyncio
+class TestUserLibraryServiceExceptionHandling:
+    """Test exception handling across all service methods."""
+
+    async def test_get_user_library_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test get_user_library propagates repository exceptions."""
+        # ARRANGE
+        user_id = "user123"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'get_user_library',
+            new_callable=AsyncMock,
+            side_effect=Exception("Database connection error")
+        ):
+            # ACT & ASSERT
+            with pytest.raises(Exception) as exc_info:
+                await user_library_service.get_user_library(user_id)
+
+            assert "Database connection error" in str(exc_info.value)
+
+    async def test_add_to_library_repository_returns_none(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test add_to_library raises ValueError when repository returns None."""
+        # ARRANGE
+        user_id = "user123"
+        factor_id = "factor456"
+
+        # Mock repository to return None (failure case)
+        with patch.object(
+            user_library_service.user_library_repo,
+            'add_to_library',
+            new_callable=AsyncMock,
+            return_value=None
+        ):
+            # ACT & ASSERT
+            with pytest.raises(ValueError) as exc_info:
+                await user_library_service.add_to_library(user_id, factor_id)
+
+            assert "Failed to add item to library" in str(exc_info.value)
+
+    async def test_add_to_library_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test add_to_library propagates repository exceptions."""
+        # ARRANGE
+        user_id = "user123"
+        factor_id = "factor456"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'add_to_library',
+            new_callable=AsyncMock,
+            side_effect=Exception("Foreign key constraint violation")
+        ):
+            # ACT & ASSERT
+            with pytest.raises(Exception) as exc_info:
+                await user_library_service.add_to_library(user_id, factor_id)
+
+            assert "Foreign key constraint violation" in str(exc_info.value)
+
+    async def test_toggle_favorite_update_returns_none(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test toggle_favorite returns None when update fails."""
+        # ARRANGE
+        user_id = "user123"
+        factor_id = "factor456"
+
+        # Create a mock library item
+        mock_item = MagicMock()
+        mock_item.id = "item123"
+        mock_item.user_id = user_id
+        mock_item.factor_id = factor_id
+
+        # Mock find to succeed, but update to return None
+        with patch.object(
+            user_library_service.user_library_repo,
+            'find_library_item',
+            new_callable=AsyncMock,
+            return_value=mock_item
+        ), patch.object(
+            user_library_service.user_library_repo,
+            'update',
+            new_callable=AsyncMock,
+            return_value=None
+        ):
+            # ACT
+            result = await user_library_service.toggle_favorite(
+                user_id,
+                factor_id,
+                is_favorite=True
+            )
+
+            # ASSERT
+            assert result is None
+
+    async def test_toggle_favorite_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test toggle_favorite propagates repository exceptions."""
+        # ARRANGE
+        user_id = "user123"
+        factor_id = "factor456"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'find_library_item',
+            new_callable=AsyncMock,
+            side_effect=Exception("Database timeout")
+        ):
+            # ACT & ASSERT
+            with pytest.raises(Exception) as exc_info:
+                await user_library_service.toggle_favorite(
+                    user_id,
+                    factor_id,
+                    is_favorite=True
+                )
+
+            assert "Database timeout" in str(exc_info.value)
+
+    async def test_increment_usage_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test increment_usage returns False on repository exception."""
+        # ARRANGE
+        user_id = "user123"
+        factor_id = "factor456"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'find_library_item',
+            new_callable=AsyncMock,
+            side_effect=Exception("Connection lost")
+        ):
+            # ACT
+            result = await user_library_service.increment_usage(user_id, factor_id)
+
+            # ASSERT
+            assert result is False
+
+    async def test_get_favorites_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test get_favorites propagates repository exceptions."""
+        # ARRANGE
+        user_id = "user123"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'get_favorites',
+            new_callable=AsyncMock,
+            side_effect=Exception("Query timeout")
+        ):
+            # ACT & ASSERT
+            with pytest.raises(Exception) as exc_info:
+                await user_library_service.get_favorites(user_id)
+
+            assert "Query timeout" in str(exc_info.value)
+
+    async def test_get_most_used_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test get_most_used propagates repository exceptions."""
+        # ARRANGE
+        user_id = "user123"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'get_most_used',
+            new_callable=AsyncMock,
+            side_effect=Exception("Invalid query")
+        ):
+            # ACT & ASSERT
+            with pytest.raises(Exception) as exc_info:
+                await user_library_service.get_most_used(user_id)
+
+            assert "Invalid query" in str(exc_info.value)
+
+    async def test_remove_from_library_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test remove_from_library returns False on repository exception."""
+        # ARRANGE
+        user_id = "user123"
+        factor_id = "factor456"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'find_library_item',
+            new_callable=AsyncMock,
+            side_effect=Exception("Database error")
+        ):
+            # ACT
+            result = await user_library_service.remove_from_library(user_id, factor_id)
+
+            # ASSERT
+            assert result is False
+
+    async def test_get_library_stats_repository_exception(
+        self,
+        user_library_service: UserLibraryService
+    ):
+        """Test get_library_stats propagates repository exceptions."""
+        # ARRANGE
+        user_id = "user123"
+
+        # Mock repository to raise exception
+        with patch.object(
+            user_library_service.user_library_repo,
+            'count_user_library',
+            new_callable=AsyncMock,
+            side_effect=Exception("Stats calculation error")
+        ):
+            # ACT & ASSERT
+            with pytest.raises(Exception) as exc_info:
+                await user_library_service.get_library_stats(user_id)
+
+            assert "Stats calculation error" in str(exc_info.value)

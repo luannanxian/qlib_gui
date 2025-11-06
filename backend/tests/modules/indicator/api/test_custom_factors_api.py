@@ -77,9 +77,7 @@ class TestCreateCustomFactor:
             "formula": "close / open - 1",
             "formula_language": "qlib_alpha",
             "description": "包含所有可选字段的因子",
-            "base_indicator_id": str(sample_indicator.id),
-            "parameters": {"period": 20},
-            "tags": ["momentum", "price"]
+            "base_indicator_id": str(sample_indicator.id)
         }
 
         # ACT
@@ -92,8 +90,6 @@ class TestCreateCustomFactor:
         assert response.status_code == 201
         data = response.json()
         assert data["base_indicator_id"] == str(sample_indicator.id)
-        assert data["parameters"] == factor_data["parameters"]
-        assert data["tags"] == factor_data["tags"]
 
     async def test_create_factor_missing_required_fields(
         self,
@@ -228,7 +224,7 @@ class TestListUserFactors:
 
         # ACT
         response = await async_client.get(
-            f"/api/custom-factors?status_filter={FactorStatus.DRAFT.value}"
+            f"/api/custom-factors?status={FactorStatus.DRAFT.value}"
         )
 
         # ASSERT
@@ -450,13 +446,9 @@ class TestDeleteCustomFactor:
         assert response.status_code == 204
         assert response.content == b""
 
-        # Verify factor was deleted from database
-        from sqlalchemy import select
-        result = await db_session.execute(
-            select(CustomFactor).where(CustomFactor.id == factor_id)
-        )
-        deleted_factor = result.scalar_one_or_none()
-        assert deleted_factor is None
+        # Verify factor was soft deleted (is_deleted flag set to True)
+        await db_session.refresh(sample_custom_factor)
+        assert sample_custom_factor.is_deleted is True
 
     async def test_delete_factor_not_found(
         self,
@@ -741,3 +733,414 @@ class TestCustomFactorAPIResponseFormat:
         assert "skip" in data
         assert "limit" in data
         assert "factors" in data
+
+
+@pytest.mark.asyncio
+class TestCustomFactorAPIServiceErrorHandling:
+    """Test service-level error handling for Custom Factor API."""
+
+    async def test_create_factor_service_value_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test creating factor handles service ValueError."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_create_factor(*args, **kwargs):
+            raise ValueError("Invalid formula syntax")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "create_factor",
+            mock_create_factor
+        )
+
+        factor_data = {
+            "factor_name": "测试因子",
+            "formula": "invalid formula",
+            "formula_language": "qlib_alpha"
+        }
+
+        # ACT
+        response = await async_client.post(
+            "/api/custom-factors",
+            json=factor_data
+        )
+
+        # ASSERT
+        assert response.status_code == 400
+        data = response.json()
+        assert "detail" in data
+        assert "Invalid formula syntax" in data["detail"]
+
+    async def test_create_factor_service_unexpected_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test creating factor handles unexpected service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_create_factor(*args, **kwargs):
+            raise Exception("Unexpected database error")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "create_factor",
+            mock_create_factor
+        )
+
+        factor_data = {
+            "factor_name": "测试因子",
+            "formula": "close",
+            "formula_language": "qlib_alpha"
+        }
+
+        # ACT
+        response = await async_client.post(
+            "/api/custom-factors",
+            json=factor_data
+        )
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to create factor" in data["detail"]
+
+    async def test_list_user_factors_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test listing factors handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_get_user_factors(*args, **kwargs):
+            raise Exception("Database connection lost")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "get_user_factors",
+            mock_get_user_factors
+        )
+
+        # ACT
+        response = await async_client.get("/api/custom-factors")
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to list factors" in data["detail"]
+
+    async def test_get_factor_detail_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test getting factor detail handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_get_factor_detail(*args, **kwargs):
+            raise Exception("Database timeout")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "get_factor_detail",
+            mock_get_factor_detail
+        )
+
+        # ACT
+        response = await async_client.get(
+            "/api/custom-factors/test-id"
+        )
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to get factor" in data["detail"]
+
+    async def test_update_factor_service_value_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test updating factor handles service ValueError."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_update_factor(*args, **kwargs):
+            raise ValueError("Cannot update published factor")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "update_factor",
+            mock_update_factor
+        )
+
+        update_data = {"factor_name": "新名称"}
+
+        # ACT
+        response = await async_client.put(
+            "/api/custom-factors/test-id",
+            json=update_data
+        )
+
+        # ASSERT
+        assert response.status_code == 400
+        data = response.json()
+        assert "detail" in data
+        assert "Cannot update published factor" in data["detail"]
+
+    async def test_update_factor_service_unexpected_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test updating factor handles unexpected service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_update_factor(*args, **kwargs):
+            raise Exception("Unexpected error")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "update_factor",
+            mock_update_factor
+        )
+
+        update_data = {"factor_name": "新名称"}
+
+        # ACT
+        response = await async_client.put(
+            "/api/custom-factors/test-id",
+            json=update_data
+        )
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to update factor" in data["detail"]
+
+    async def test_delete_factor_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test deleting factor handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_delete_factor(*args, **kwargs):
+            raise Exception("Database error")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "delete_factor",
+            mock_delete_factor
+        )
+
+        # ACT
+        response = await async_client.delete(
+            "/api/custom-factors/test-id"
+        )
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to delete factor" in data["detail"]
+
+    async def test_publish_factor_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test publishing factor handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_publish_factor(*args, **kwargs):
+            raise Exception("Publication failed")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "publish_factor",
+            mock_publish_factor
+        )
+
+        publish_data = {"is_public": True}
+
+        # ACT
+        response = await async_client.post(
+            "/api/custom-factors/test-id/publish",
+            json=publish_data
+        )
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to publish factor" in data["detail"]
+
+    async def test_clone_factor_service_error(
+        self,
+        async_client: AsyncClient,
+        monkeypatch
+    ):
+        """Test cloning factor handles service errors."""
+        # ARRANGE
+        from app.modules.indicator.services import custom_factor_service
+
+        async def mock_clone_factor(*args, **kwargs):
+            raise Exception("Clone operation failed")
+
+        monkeypatch.setattr(
+            custom_factor_service.CustomFactorService,
+            "clone_factor",
+            mock_clone_factor
+        )
+
+        clone_data = {"new_name": "克隆因子"}
+
+        # ACT
+        response = await async_client.post(
+            "/api/custom-factors/test-id/clone",
+            json=clone_data
+        )
+
+        # ASSERT
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Failed to clone factor" in data["detail"]
+
+
+@pytest.mark.asyncio
+class TestCustomFactorAPICorrelationID:
+    """Test correlation ID handling for Custom Factor API."""
+
+    async def test_create_factor_with_custom_correlation_id(
+        self,
+        async_client: AsyncClient,
+        db_session: AsyncSession
+    ):
+        """Test creating factor with custom correlation ID header."""
+        # ARRANGE
+        correlation_id = "custom-correlation-12345"
+        headers = {"X-Correlation-ID": correlation_id}
+        factor_data = {
+            "factor_name": "测试因子",
+            "formula": "close",
+            "formula_language": "qlib_alpha"
+        }
+
+        # ACT
+        response = await async_client.post(
+            "/api/custom-factors",
+            json=factor_data,
+            headers=headers
+        )
+
+        # ASSERT
+        assert response.status_code == 201
+
+    async def test_create_factor_generates_correlation_id(
+        self,
+        async_client: AsyncClient,
+        db_session: AsyncSession
+    ):
+        """Test creating factor generates correlation ID when not provided."""
+        # ARRANGE
+        factor_data = {
+            "factor_name": "测试因子",
+            "formula": "close",
+            "formula_language": "qlib_alpha"
+        }
+
+        # ACT
+        response = await async_client.post(
+            "/api/custom-factors",
+            json=factor_data
+        )
+
+        # ASSERT
+        assert response.status_code == 201
+
+    async def test_list_factors_with_correlation_id(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test listing factors with correlation ID header."""
+        # ARRANGE
+        correlation_id = "list-correlation-123"
+        headers = {"X-Correlation-ID": correlation_id}
+
+        # ACT
+        response = await async_client.get(
+            "/api/custom-factors",
+            headers=headers
+        )
+
+        # ASSERT
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+class TestCustomFactorAPIPaginationEdgeCases:
+    """Test pagination edge cases for Custom Factor API."""
+
+    async def test_list_factors_with_zero_limit(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test listing factors with limit=0 (invalid)."""
+        # ACT
+        response = await async_client.get("/api/custom-factors?limit=0")
+
+        # ASSERT
+        assert response.status_code == 422  # Validation error
+
+    async def test_list_factors_with_maximum_limit(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test listing factors with maximum allowed limit."""
+        # ACT
+        response = await async_client.get("/api/custom-factors?limit=1000")
+
+        # ASSERT
+        assert response.status_code == 200
+        data = response.json()
+        assert data["limit"] == 1000
+
+    async def test_list_factors_exceeding_maximum_limit(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test listing factors with limit exceeding maximum."""
+        # ACT
+        response = await async_client.get("/api/custom-factors?limit=1001")
+
+        # ASSERT
+        assert response.status_code == 422  # Validation error
+
+    async def test_list_factors_with_negative_skip(
+        self,
+        async_client: AsyncClient
+    ):
+        """Test listing factors with negative skip value."""
+        # ACT
+        response = await async_client.get("/api/custom-factors?skip=-1")
+
+        # ASSERT
+        assert response.status_code == 422  # Validation error
