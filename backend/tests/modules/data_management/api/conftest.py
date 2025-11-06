@@ -24,8 +24,8 @@ from app.database.models import (
 from app.database.repositories.dataset import DatasetRepository
 from app.database import get_db
 
-# Use SQLite for faster, more reliable testing
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Use MySQL for testing as required
+TEST_DATABASE_URL = "mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test?charset=utf8mb4"
 
 
 @pytest.fixture(scope="function")
@@ -43,8 +43,8 @@ async def test_engine(event_loop):
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False}
+        poolclass=NullPool,  # Use NullPool for testing to avoid connection issues
+        pool_pre_ping=True,  # Verify connections before using
     )
 
     # Create all tables
@@ -94,8 +94,8 @@ def client(event_loop) -> Generator[TestClient, None, None]:
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False}
+        poolclass=NullPool,  # Use NullPool for testing
+        pool_pre_ping=True,  # Verify connections before using
     )
 
     # Create tables synchronously
@@ -151,6 +151,7 @@ async def _create_test_engine():
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,
+        pool_pre_ping=True,
     )
 
     # Debug: Print tables before creation
@@ -159,8 +160,8 @@ async def _create_test_engine():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-        # Debug: Verify tables were created
-        result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table';"))
+        # Debug: Verify tables were created (MySQL version)
+        result = await conn.execute(text("SHOW TABLES;"))
         created_tables = [row[0] for row in result]
         print(f"DEBUG: Tables actually created in DB: {created_tables}")
 

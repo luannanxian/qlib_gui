@@ -717,7 +717,6 @@ class TestImportAPIErrorHandling:
         await repo.delete(task.id, soft=False, commit=True)
 
 
-@pytest.mark.asyncio
 class TestImportAPIInputValidation:
     """Test input validation for Import API."""
 
