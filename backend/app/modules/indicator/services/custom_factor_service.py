@@ -143,30 +143,120 @@ class CustomFactorService:
             logger.error(f"Error getting user factors: {e}")
             raise
 
-    async def get_factor_detail(self, factor_id: str) -> Optional[Dict[str, Any]]:
+    async def get_factor_detail(
+        self,
+        factor_id: str,
+        user_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
-        Get detailed factor information.
+        Get detailed factor information with optional authorization check.
 
         Args:
             factor_id: Factor ID
+            user_id: Optional user ID for authorization check.
+                    If provided, only returns factor if user owns it or it's public.
 
         Returns:
-            Factor details or None if not found
+            Dict with factor details or None if not found/unauthorized
         """
         try:
             factor = await self.custom_factor_repo.get(factor_id)
             if not factor:
                 return None
 
-            return self._to_dict(factor)
+            # If user_id provided, check authorization
+            if user_id is not None:
+                # User can access if: owns the factor OR factor is public
+                if factor.user_id != user_id and not factor.is_public:
+                    logger.warning(
+                        f"Unauthorized access attempt for factor {factor_id} by user {user_id}"
+                    )
+                    return None
+
+            return {
+                "factor": self._to_dict(factor),
+                "message": "Factor retrieved successfully"
+            }
         except Exception as e:
             logger.error(f"Error getting factor detail: {e}")
+            raise
+
+    async def update_factor(
+        self,
+        factor_id: str,
+        factor_data: Dict[str, Any],
+        authenticated_user_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Update a custom factor with authorization check.
+
+        Args:
+            factor_id: Factor ID to update
+            factor_data: Dictionary of fields to update
+            authenticated_user_id: ID of authenticated user (from auth context)
+
+        Returns:
+            Dict with updated factor or None if not found/unauthorized
+
+        Raises:
+            ValidationError: If update data is invalid
+            AuthorizationError: If user doesn't own the factor
+        """
+        try:
+            # Verify ownership
+            factor = await self.custom_factor_repo.get(factor_id)
+            if not factor:
+                return None
+
+            if factor.user_id != authenticated_user_id:
+                logger.warning(
+                    f"Unauthorized update attempt for factor {factor_id} by user {authenticated_user_id}"
+                )
+                raise AuthorizationError(
+                    f"User {authenticated_user_id} is not authorized to update factor {factor_id}"
+                )
+
+            # Prevent changing user_id
+            if 'user_id' in factor_data:
+                del factor_data['user_id']
+
+            # Validate formula_language if provided
+            if 'formula_language' in factor_data:
+                valid_languages = ['qlib_alpha', 'python', 'pandas']
+                if factor_data['formula_language'] not in valid_languages:
+                    raise ValidationError(
+                        f"Invalid formula_language. Must be one of: {', '.join(valid_languages)}"
+                    )
+
+            # Update factor
+            updated = await self.custom_factor_repo.update(factor_id, factor_data, commit=True)
+            if not updated:
+                return None
+
+            logger.info(
+                f"Factor updated successfully",
+                extra={
+                    "factor_id": factor_id,
+                    "user_id": authenticated_user_id,
+                    "updated_fields": list(factor_data.keys())
+                }
+            )
+
+            return {
+                "factor": self._to_dict(updated),
+                "message": "Factor updated successfully"
+            }
+        except (ValidationError, AuthorizationError):
+            raise
+        except Exception as e:
+            logger.error(f"Error updating factor {factor_id}: {e}")
             raise
 
     async def publish_factor(
         self,
         factor_id: str,
-        user_id: str
+        user_id: str,
+        is_public: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
         Publish a draft factor (requires ownership).
@@ -174,9 +264,10 @@ class CustomFactorService:
         Args:
             factor_id: Factor ID
             user_id: User ID requesting publish
+            is_public: Whether to make the factor public upon publishing
 
         Returns:
-            Updated factor or None if unauthorized/not found
+            Dict with updated factor or None if unauthorized/not found
         """
         try:
             # Verify ownership
@@ -190,9 +281,24 @@ class CustomFactorService:
             if not published:
                 return None
 
+            # Make public if requested
+            if is_public:
+                published = await self.custom_factor_repo.make_public(factor_id)
+                if not published:
+                    return None
+
+            logger.info(
+                f"Factor published successfully",
+                extra={
+                    "factor_id": factor_id,
+                    "user_id": user_id,
+                    "is_public": is_public
+                }
+            )
+
             return {
                 "factor": self._to_dict(published),
-                "message": "Factor published successfully"
+                "message": f"Factor published successfully{' and made public' if is_public else ''}"
             }
         except Exception as e:
             logger.error(f"Error publishing factor: {e}")
@@ -236,36 +342,49 @@ class CustomFactorService:
     async def clone_factor(
         self,
         factor_id: str,
-        new_user_id: str,
-        new_factor_name: Optional[str] = None
+        authenticated_user_id: str,
+        new_name: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Clone a public factor to another user.
+        Clone a public factor to the authenticated user.
 
         Args:
             factor_id: Source factor ID
-            new_user_id: New owner user ID
-            new_factor_name: Optional new name
+            authenticated_user_id: User ID who is cloning (from auth context)
+            new_name: Optional new name for cloned factor
 
         Returns:
-            Cloned factor or None if source not public
+            Dict with cloned factor or None if source not found/not public
         """
         try:
-            # Verify source is public
+            # Verify source exists and is public
             source = await self.custom_factor_repo.get(factor_id)
-            if not source or not source.is_public:
+            if not source:
+                logger.warning(f"Attempt to clone non-existent factor {factor_id}")
+                return None
+
+            if not source.is_public:
                 logger.warning(f"Attempt to clone non-public factor {factor_id}")
                 return None
 
-            # Clone
+            # Clone to authenticated user
             cloned = await self.custom_factor_repo.clone_factor(
                 factor_id=factor_id,
-                new_user_id=new_user_id,
-                new_factor_name=new_factor_name
+                new_user_id=authenticated_user_id,
+                new_factor_name=new_name
             )
 
             if not cloned:
                 return None
+
+            logger.info(
+                f"Factor cloned successfully",
+                extra={
+                    "source_factor_id": factor_id,
+                    "cloned_factor_id": cloned.id,
+                    "user_id": authenticated_user_id
+                }
+            )
 
             return {
                 "factor": self._to_dict(cloned),
