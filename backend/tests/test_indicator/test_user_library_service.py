@@ -242,3 +242,121 @@ class TestUserLibraryService:
         assert result["total_items"] == 5
         assert result["favorite_count"] == 2
         assert result["user_id"] == "user123"
+
+    async def test_get_user_library_exception_handling(self, user_library_service, user_library_repo, monkeypatch):
+        """测试get_user_library异常处理"""
+        async def mock_get_user_library(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "get_user_library", mock_get_user_library)
+
+        with pytest.raises(RuntimeError, match="Database error"):
+            await user_library_service.get_user_library("user123")
+
+    async def test_add_to_library_exception_handling(self, user_library_service, user_library_repo, monkeypatch):
+        """测试add_to_library异常处理"""
+        async def mock_add_to_library(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "add_to_library", mock_add_to_library)
+
+        with pytest.raises(RuntimeError, match="Database error"):
+            await user_library_service.add_to_library("user123", "factor_001")
+
+    async def test_add_to_library_returns_none(self, user_library_service, user_library_repo, monkeypatch):
+        """测试add_to_library当仓库返回None时"""
+        async def mock_add_to_library(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(user_library_repo, "add_to_library", mock_add_to_library)
+
+        with pytest.raises(ValueError, match="Failed to add item to library"):
+            await user_library_service.add_to_library("user123", "factor_001")
+
+    async def test_toggle_favorite_exception_handling(self, user_library_service, user_library_repo, monkeypatch):
+        """测试toggle_favorite异常处理"""
+        async def mock_find(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "find_library_item", mock_find)
+
+        with pytest.raises(RuntimeError, match="Database error"):
+            await user_library_service.toggle_favorite("user123", "factor_001", True)
+
+    async def test_toggle_favorite_update_returns_none(self, user_library_service, user_library_repo, sample_library_data, monkeypatch):
+        """测试toggle_favorite当update返回None时"""
+        created = await user_library_repo.create(sample_library_data, commit=True)
+
+        # Mock update to return None
+        async def mock_update(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(user_library_repo, "update", mock_update)
+
+        result = await user_library_service.toggle_favorite("user123", "factor_001", True)
+        assert result is None
+
+    async def test_increment_usage_item_not_found(self, user_library_service):
+        """测试increment_usage当项目不存在时"""
+        result = await user_library_service.increment_usage("user123", "nonexistent_factor")
+        assert result is False
+
+    async def test_increment_usage_exception_handling(self, user_library_service, user_library_repo, sample_library_data, monkeypatch):
+        """测试increment_usage异常处理"""
+        await user_library_repo.create(sample_library_data, commit=True)
+
+        async def mock_increment(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "increment_usage_count", mock_increment)
+
+        result = await user_library_service.increment_usage("user123", "factor_001")
+        assert result is False
+
+    async def test_get_favorites_exception_handling(self, user_library_service, user_library_repo, monkeypatch):
+        """测试get_favorites异常处理"""
+        async def mock_get_favorites(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "get_favorites", mock_get_favorites)
+
+        with pytest.raises(RuntimeError, match="Database error"):
+            await user_library_service.get_favorites("user123")
+
+    async def test_get_most_used_exception_handling(self, user_library_service, user_library_repo, monkeypatch):
+        """测试get_most_used异常处理"""
+        async def mock_get_most_used(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "get_most_used", mock_get_most_used)
+
+        with pytest.raises(RuntimeError, match="Database error"):
+            await user_library_service.get_most_used("user123")
+
+    async def test_remove_from_library_item_not_found(self, user_library_service):
+        """测试remove_from_library当项目不存在时"""
+        result = await user_library_service.remove_from_library("user123", "nonexistent_factor")
+        assert result is False
+
+    async def test_remove_from_library_exception_handling(self, user_library_service, user_library_repo, sample_library_data, monkeypatch):
+        """测试remove_from_library异常处理"""
+        await user_library_repo.create(sample_library_data, commit=True)
+
+        async def mock_delete(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "delete", mock_delete)
+
+        result = await user_library_service.remove_from_library("user123", "factor_001")
+        assert result is False
+
+    async def test_get_library_stats_exception_handling(self, user_library_service, user_library_repo, monkeypatch):
+        """测试get_library_stats异常处理"""
+        async def mock_get_user_library(*args, **kwargs):
+            raise RuntimeError("Database error")
+
+        monkeypatch.setattr(user_library_repo, "get_user_library", mock_get_user_library)
+
+        with pytest.raises(RuntimeError, match="Database error"):
+            await user_library_service.get_library_stats("user123")
+
