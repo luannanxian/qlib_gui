@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 from sqlalchemy import text
+from httpx import AsyncClient
 
 from app.database.base import Base
 # Import all models to register them with Base.metadata
@@ -24,8 +25,8 @@ from app.database.models import (
 from app.database.repositories.dataset import DatasetRepository
 from app.database import get_db
 
-# Use MySQL for testing as required
-TEST_DATABASE_URL = "mysql+aiomysql://remote:remote123456@192.168.3.46:3306/qlib_ui_test?charset=utf8mb4"
+# Use SQLite in-memory database for fast testing
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture(scope="function")
@@ -38,13 +39,20 @@ def event_loop():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_engine(event_loop):
-    """Create a test database engine"""
+async def test_engine_session():
+    """
+    Create a function-level test database engine with optimized pooling.
+
+    Uses StaticPool for single-connection pooling, which is ideal for testing.
+    Tables are created once per test function and dropped at the end.
+
+    Note: Using function scope to avoid event loop conflicts between tests.
+    """
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        poolclass=NullPool,  # Use NullPool for testing to avoid connection issues
-        pool_pre_ping=True,  # Verify connections before using
+        poolclass=StaticPool,  # Single connection pool for testing
+        connect_args={"check_same_thread": False},  # Required for SQLite
     )
 
     # Create all tables
@@ -61,19 +69,60 @@ async def test_engine(event_loop):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Create a test database session"""
-    async_session = async_sessionmaker(
-        bind=test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
+async def test_engine(event_loop):
+    """
+    DEPRECATED: Use test_engine_session instead.
+
+    Kept for backward compatibility with existing tests.
+    """
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        poolclass=NullPool,
+        connect_args={"check_same_thread": False},  # Required for SQLite
     )
 
-    async with async_session() as session:
-        yield session
-        await session.rollback()
+    # Create all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield engine
+
+    # Drop all tables after test
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session(test_engine_session) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Create a test database session with transaction isolation.
+
+    Each test runs in its own transaction which is automatically rolled back
+    after the test completes. This ensures test isolation without needing to
+    manually clean up data.
+
+    Uses test_engine_session (session-scoped) for connection reuse.
+    """
+    # Create a connection from the session-level engine
+    async with test_engine_session.connect() as conn:
+        # Start a transaction
+        async with conn.begin() as trans:
+            # Create a session bound to this connection
+            session = AsyncSession(
+                bind=conn,
+                expire_on_commit=False,
+                autocommit=False,
+                autoflush=False,
+            )
+
+            yield session
+
+            # Rollback the transaction after test
+            # This ensures all changes are discarded
+            await trans.rollback()
 
 
 @pytest_asyncio.fixture
@@ -82,11 +131,46 @@ async def dataset_repo(db_session: AsyncSession) -> DatasetRepository:
     return DatasetRepository(db_session)
 
 
+@pytest_asyncio.fixture
+async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """
+    Create async HTTP client for testing FastAPI endpoints.
+
+    This fixture provides a fully async HTTP client that works seamlessly
+    with async database sessions, avoiding event loop conflicts.
+
+    IMPORTANT: Shares the same db_session to ensure transaction isolation works.
+    """
+    from app.main import app
+    from httpx import ASGITransport
+
+    # Override the get_db dependency to use the shared db_session
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        """Override dependency that returns the shared test session"""
+        yield db_session
+
+    # Set the override
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        # Create async HTTP client with ASGI transport
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test"
+        ) as client:
+            yield client
+    finally:
+        # Clean up
+        app.dependency_overrides.clear()
+
+
 @pytest.fixture
 def client(event_loop) -> Generator[TestClient, None, None]:
-    """Create test client with overridden database dependency.
+    """
+    DEPRECATED: Use async_client instead.
 
-    Uses a fresh database session for each request.
+    Synchronous test client kept for backward compatibility.
+    This client has event loop conflicts with async db_session.
     """
     from app.main import app
 
@@ -94,8 +178,8 @@ def client(event_loop) -> Generator[TestClient, None, None]:
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        poolclass=NullPool,  # Use NullPool for testing
-        pool_pre_ping=True,  # Verify connections before using
+        poolclass=NullPool,
+        connect_args={"check_same_thread": False},  # Required for SQLite
     )
 
     # Create tables synchronously
@@ -151,7 +235,7 @@ async def _create_test_engine():
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,
-        pool_pre_ping=True,
+        connect_args={"check_same_thread": False},  # Required for SQLite
     )
 
     # Debug: Print tables before creation

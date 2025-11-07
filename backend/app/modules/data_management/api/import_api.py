@@ -9,7 +9,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -180,12 +180,18 @@ async def process_import_task(
     # Process the import
     import_service = DataImportService(session, settings.UPLOAD_DIR)
 
-    result = await import_service.process_import(
-        task_id=task_id,
-        file_path=task.file_path,
-        import_type=ImportType(task.import_type),
-        import_config=task.import_config
-    )
+    try:
+        result = await import_service.process_import(
+            task_id=task_id,
+            file_path=task.file_path,
+            import_type=ImportType(task.import_type),
+            import_config=task.import_config
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing import task: {str(e)}"
+        )
 
     # Get updated task
     task = await repo.get(task_id)
@@ -201,8 +207,8 @@ async def process_import_task(
 )
 @log_async_execution(log_args=False)
 async def list_import_tasks(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0, description="Number of records to skip"),
+    limit: int = Query(default=100, gt=0, le=1000, description="Maximum number of records to return"),
     task_status: Optional[ImportStatus] = None,
     user_id: Optional[str] = None,
     session: AsyncSession = Depends(get_db)

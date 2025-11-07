@@ -44,6 +44,11 @@ from app.database.models.indicator import (
     FormulaLanguage,
     LibraryItemStatus,
 )
+from app.database.models.backtest import (
+    BacktestConfig,
+    BacktestResult,
+    BacktestStatus,
+)
 
 __all__ = [
     # Models
@@ -60,6 +65,8 @@ __all__ = [
     "CustomFactor",
     "FactorValidationResult",
     "UserFactorLibrary",
+    "BacktestConfig",
+    "BacktestResult",
     # Enums - Dataset
     "DataSource",
     "DatasetStatus",
@@ -94,4 +101,6 @@ __all__ = [
     "ValidationType",
     "FormulaLanguage",
     "LibraryItemStatus",
+    # Enums - Backtest
+    "BacktestStatus",
 ]

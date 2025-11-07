@@ -21,6 +21,7 @@ import io
 import os
 import pytest
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from unittest.mock import patch, AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,9 +33,10 @@ from app.modules.data_management.services.import_service import DataImportServic
 class TestUploadFileEndpoint:
     """Test POST /api/imports/upload endpoint."""
 
-    def test_upload_csv_file_success(
+    @pytest.mark.asyncio
+    async def test_upload_csv_file_success(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         tmp_path
     ):
         """Test uploading a CSV file successfully."""
@@ -45,7 +47,7 @@ class TestUploadFileEndpoint:
 
         with patch('app.config.settings.UPLOAD_DIR', str(tmp_path)):
             # ACT
-            response = client.post(
+            response = await async_client.post(
                 "/api/imports/upload",
                 files={"file": ("test_data.csv", csv_file, "text/csv")},
                 data={"task_name": "Test CSV Import", "user_id": "user123"}
@@ -67,9 +69,10 @@ class TestUploadFileEndpoint:
         assert "file_path" in data
         assert data["file_size"] > 0
 
-    def test_upload_excel_file_success(
+    @pytest.mark.asyncio
+    async def test_upload_excel_file_success(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         tmp_path
     ):
         """Test uploading an Excel file successfully."""
@@ -79,7 +82,7 @@ class TestUploadFileEndpoint:
 
         with patch('app.config.settings.UPLOAD_DIR', str(tmp_path)):
             # ACT
-            response = client.post(
+            response = await async_client.post(
                 "/api/imports/upload",
                 files={"file": ("stocks.xlsx", excel_file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
                 data={"task_name": "Excel Import"}
@@ -91,16 +94,17 @@ class TestUploadFileEndpoint:
         assert data["import_type"] == ImportType.EXCEL.value
         assert data["original_filename"] == "stocks.xlsx"
 
-    def test_upload_without_filename(
+    @pytest.mark.asyncio
+    async def test_upload_without_filename(
         self,
-        client: TestClient
+        async_client: AsyncClient
     ):
         """Test uploading file without filename."""
         # ARRANGE
         file_content = io.BytesIO(b"test")
 
         # ACT
-        response = client.post(
+        response = await async_client.post(
             "/api/imports/upload",
             files={"file": (None, file_content, "text/csv")}
         )
@@ -111,16 +115,17 @@ class TestUploadFileEndpoint:
         if response.status_code == 400:
             assert "Filename is required" in response.json()["detail"]
 
-    def test_upload_unsupported_file_type(
+    @pytest.mark.asyncio
+    async def test_upload_unsupported_file_type(
         self,
-        client: TestClient
+        async_client: AsyncClient
     ):
         """Test uploading unsupported file type."""
         # ARRANGE
         txt_file = io.BytesIO(b"test data")
 
         # ACT
-        response = client.post(
+        response = await async_client.post(
             "/api/imports/upload",
             files={"file": ("data.txt", txt_file, "text/plain")}
         )
@@ -129,9 +134,10 @@ class TestUploadFileEndpoint:
         assert response.status_code == 400
         assert "Unsupported file type" in response.json()["detail"]
 
-    def test_upload_file_exceeds_size_limit(
+    @pytest.mark.asyncio
+    async def test_upload_file_exceeds_size_limit(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         tmp_path
     ):
         """Test uploading file that exceeds size limit."""
@@ -142,7 +148,7 @@ class TestUploadFileEndpoint:
         with patch('app.config.settings.UPLOAD_DIR', str(tmp_path)), \
              patch('app.config.settings.MAX_UPLOAD_SIZE_MB', 100):
             # ACT
-            response = client.post(
+            response = await async_client.post(
                 "/api/imports/upload",
                 files={"file": ("large.csv", large_file, "text/csv")}
             )
@@ -151,9 +157,10 @@ class TestUploadFileEndpoint:
         assert response.status_code == 413
         assert "exceeds maximum" in response.json()["detail"]
 
-    def test_upload_file_with_auto_generated_task_name(
+    @pytest.mark.asyncio
+    async def test_upload_file_with_auto_generated_task_name(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         tmp_path
     ):
         """Test uploading file without custom task name (auto-generated)."""
@@ -162,7 +169,7 @@ class TestUploadFileEndpoint:
 
         with patch('app.config.settings.UPLOAD_DIR', str(tmp_path)):
             # ACT
-            response = client.post(
+            response = await async_client.post(
                 "/api/imports/upload",
                 files={"file": ("mydata.csv", csv_file, "text/csv")}
             )
@@ -179,7 +186,7 @@ class TestProcessImportTask:
     @pytest.mark.asyncio
     async def test_process_pending_task_success(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test processing a pending import task successfully."""
@@ -201,7 +208,7 @@ class TestProcessImportTask:
             mock_process.return_value = {"success": True, "rows_processed": 100}
 
             # ACT
-            response = client.post(f"/api/imports/{task.id}/process")
+            response = await async_client.post(f"/api/imports/{task.id}/process")
 
         # ASSERT
         assert response.status_code == 200
@@ -211,16 +218,17 @@ class TestProcessImportTask:
         # Cleanup
         await repo.delete(task.id, soft=False, commit=True)
 
-    def test_process_nonexistent_task(
+    @pytest.mark.asyncio
+    async def test_process_nonexistent_task(
         self,
-        client: TestClient
+        async_client: AsyncClient
     ):
         """Test processing non-existent task."""
         # ARRANGE
         fake_id = "00000000-0000-0000-0000-000000000000"
 
         # ACT
-        response = client.post(f"/api/imports/{fake_id}/process")
+        response = await async_client.post(f"/api/imports/{fake_id}/process")
 
         # ASSERT
         assert response.status_code == 404
@@ -229,7 +237,7 @@ class TestProcessImportTask:
     @pytest.mark.asyncio
     async def test_process_already_completed_task(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test processing already completed task (should fail)."""
@@ -248,7 +256,7 @@ class TestProcessImportTask:
         )
 
         # ACT
-        response = client.post(f"/api/imports/{task.id}/process")
+        response = await async_client.post(f"/api/imports/{task.id}/process")
 
         # ASSERT
         assert response.status_code == 400
@@ -260,7 +268,7 @@ class TestProcessImportTask:
     @pytest.mark.asyncio
     async def test_process_failed_task_cannot_retry(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test processing failed task (should fail)."""
@@ -279,7 +287,7 @@ class TestProcessImportTask:
         )
 
         # ACT
-        response = client.post(f"/api/imports/{task.id}/process")
+        response = await async_client.post(f"/api/imports/{task.id}/process")
 
         # ASSERT
         assert response.status_code == 400
@@ -294,7 +302,7 @@ class TestListImportTasks:
     @pytest.mark.asyncio
     async def test_list_all_tasks(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test listing all import tasks."""
@@ -313,7 +321,7 @@ class TestListImportTasks:
         )
 
         # ACT
-        response = client.get("/api/imports")
+        response = await async_client.get("/api/imports")
 
         # ASSERT
         assert response.status_code == 200
@@ -329,7 +337,7 @@ class TestListImportTasks:
     @pytest.mark.asyncio
     async def test_list_tasks_with_pagination(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test listing tasks with pagination parameters."""
@@ -351,7 +359,7 @@ class TestListImportTasks:
             tasks.append(task)
 
         # ACT
-        response = client.get("/api/imports?skip=2&limit=2")
+        response = await async_client.get("/api/imports?skip=2&limit=2")
 
         # ASSERT
         assert response.status_code == 200
@@ -365,7 +373,7 @@ class TestListImportTasks:
     @pytest.mark.asyncio
     async def test_list_tasks_filter_by_status(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test listing tasks filtered by status."""
@@ -384,7 +392,7 @@ class TestListImportTasks:
         )
 
         # ACT
-        response = client.get(f"/api/imports?task_status={ImportStatus.PENDING.value}")
+        response = await async_client.get(f"/api/imports?task_status={ImportStatus.PENDING.value}")
 
         # ASSERT
         assert response.status_code == 200
@@ -398,7 +406,7 @@ class TestListImportTasks:
     @pytest.mark.asyncio
     async def test_list_tasks_filter_by_user_id(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test listing tasks filtered by user_id."""
@@ -418,7 +426,7 @@ class TestListImportTasks:
         )
 
         # ACT
-        response = client.get("/api/imports?user_id=test_user_456")
+        response = await async_client.get("/api/imports?user_id=test_user_456")
 
         # ASSERT
         assert response.status_code == 200
@@ -436,7 +444,7 @@ class TestGetImportTask:
     @pytest.mark.asyncio
     async def test_get_task_success(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test getting a specific import task."""
@@ -455,7 +463,7 @@ class TestGetImportTask:
         )
 
         # ACT
-        response = client.get(f"/api/imports/{task.id}")
+        response = await async_client.get(f"/api/imports/{task.id}")
 
         # ASSERT
         assert response.status_code == 200
@@ -467,16 +475,17 @@ class TestGetImportTask:
         # Cleanup
         await repo.delete(task.id, soft=False, commit=True)
 
-    def test_get_nonexistent_task(
+    @pytest.mark.asyncio
+    async def test_get_nonexistent_task(
         self,
-        client: TestClient
+        async_client: AsyncClient
     ):
         """Test getting non-existent task."""
         # ARRANGE
         fake_id = "00000000-0000-0000-0000-000000000001"
 
         # ACT
-        response = client.get(f"/api/imports/{fake_id}")
+        response = await async_client.get(f"/api/imports/{fake_id}")
 
         # ASSERT
         assert response.status_code == 404
@@ -489,7 +498,7 @@ class TestDeleteImportTask:
     @pytest.mark.asyncio
     async def test_soft_delete_task_success(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test soft deleting an import task."""
@@ -509,7 +518,7 @@ class TestDeleteImportTask:
         task_id = task.id
 
         # ACT
-        response = client.delete(f"/api/imports/{task_id}")
+        response = await async_client.delete(f"/api/imports/{task_id}")
 
         # ASSERT
         assert response.status_code == 204
@@ -525,7 +534,7 @@ class TestDeleteImportTask:
     @pytest.mark.asyncio
     async def test_hard_delete_task_success(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession,
         tmp_path
     ):
@@ -549,7 +558,7 @@ class TestDeleteImportTask:
         task_id = task.id
 
         # ACT
-        response = client.delete(f"/api/imports/{task_id}?hard_delete=true")
+        response = await async_client.delete(f"/api/imports/{task_id}?hard_delete=true")
 
         # ASSERT
         assert response.status_code == 204
@@ -561,16 +570,17 @@ class TestDeleteImportTask:
         # Verify file is deleted
         assert not file_path.exists()
 
-    def test_delete_nonexistent_task(
+    @pytest.mark.asyncio
+    async def test_delete_nonexistent_task(
         self,
-        client: TestClient
+        async_client: AsyncClient
     ):
         """Test deleting non-existent task."""
         # ARRANGE
         fake_id = "00000000-0000-0000-0000-000000000002"
 
         # ACT
-        response = client.delete(f"/api/imports/{fake_id}")
+        response = await async_client.delete(f"/api/imports/{fake_id}")
 
         # ASSERT
         assert response.status_code == 404
@@ -582,7 +592,7 @@ class TestGetActiveTaskCount:
     @pytest.mark.asyncio
     async def test_get_active_count(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test getting count of active tasks."""
@@ -601,7 +611,7 @@ class TestGetActiveTaskCount:
         )
 
         # ACT
-        response = client.get("/api/imports/active/count")
+        response = await async_client.get("/api/imports/active/count")
 
         # ASSERT
         assert response.status_code == 200
@@ -615,7 +625,7 @@ class TestGetActiveTaskCount:
     @pytest.mark.asyncio
     async def test_get_active_count_excludes_completed(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test active count excludes completed tasks."""
@@ -634,7 +644,7 @@ class TestGetActiveTaskCount:
         )
 
         # ACT - get count before adding active task
-        response_before = client.get("/api/imports/active/count")
+        response_before = await async_client.get("/api/imports/active/count")
         count_before = response_before.json()["active_count"]
 
         # Add active task
@@ -650,7 +660,7 @@ class TestGetActiveTaskCount:
             commit=True
         )
 
-        response_after = client.get("/api/imports/active/count")
+        response_after = await async_client.get("/api/imports/active/count")
         count_after = response_after.json()["active_count"]
 
         # ASSERT
@@ -664,9 +674,10 @@ class TestGetActiveTaskCount:
 class TestImportAPIErrorHandling:
     """Test error handling for Import API endpoints."""
 
-    def test_upload_service_error(
+    @pytest.mark.asyncio
+    async def test_upload_service_error(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         tmp_path
     ):
         """Test upload endpoint handles service errors gracefully."""
@@ -676,7 +687,7 @@ class TestImportAPIErrorHandling:
         with patch('app.config.settings.UPLOAD_DIR', str(tmp_path)), \
              patch.object(DataImportService, 'create_import_task', new_callable=AsyncMock, side_effect=Exception("Service error")):
             # ACT
-            response = client.post(
+            response = await async_client.post(
                 "/api/imports/upload",
                 files={"file": ("error.csv", csv_file, "text/csv")}
             )
@@ -688,7 +699,7 @@ class TestImportAPIErrorHandling:
     @pytest.mark.asyncio
     async def test_process_task_service_error(
         self,
-        client: TestClient,
+        async_client: AsyncClient,
         db_session: AsyncSession
     ):
         """Test process endpoint handles service errors."""
@@ -708,7 +719,7 @@ class TestImportAPIErrorHandling:
 
         with patch.object(DataImportService, 'process_import', new_callable=AsyncMock, side_effect=Exception("Processing error")):
             # ACT
-            response = client.post(f"/api/imports/{task.id}/process")
+            response = await async_client.post(f"/api/imports/{task.id}/process")
 
         # ASSERT
         assert response.status_code == 500
@@ -720,24 +731,26 @@ class TestImportAPIErrorHandling:
 class TestImportAPIInputValidation:
     """Test input validation for Import API."""
 
-    def test_upload_with_invalid_pagination(
+    @pytest.mark.asyncio
+    async def test_upload_with_invalid_pagination(
         self,
-        client: TestClient
+        async_client: AsyncClient
     ):
         """Test list endpoint with invalid pagination parameters."""
         # ACT
-        response = client.get("/api/imports?skip=-1&limit=0")
+        response = await async_client.get("/api/imports?skip=-1&limit=0")
 
         # ASSERT
         assert response.status_code == 422
 
-    def test_upload_with_invalid_task_id_format(
+    @pytest.mark.asyncio
+    async def test_upload_with_invalid_task_id_format(
         self,
-        client: TestClient
+        async_client: AsyncClient
     ):
         """Test endpoints with invalid UUID format."""
         # ACT
-        response = client.get("/api/imports/invalid-uuid")
+        response = await async_client.get("/api/imports/invalid-uuid")
 
         # ASSERT
         assert response.status_code in [404, 422]

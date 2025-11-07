@@ -12,6 +12,7 @@ from app.modules.user_onboarding.api import mode_api
 from app.modules.data_management.api import dataset_api, preprocessing_api, import_api
 from app.modules.strategy.api import strategy_api
 from app.modules.indicator.api import indicator_api, custom_factor_api, user_library_api
+from app.modules.backtest.api import backtest_api, websocket_api
 
 # Import database
 from app.database import db_manager
@@ -157,6 +158,8 @@ app.include_router(strategy_api.router)
 app.include_router(indicator_api.router)
 app.include_router(custom_factor_api.router)
 app.include_router(user_library_api.router)
+app.include_router(backtest_api.router)
+app.include_router(websocket_api.router, tags=["websocket"])
 
 
 @app.get("/")
