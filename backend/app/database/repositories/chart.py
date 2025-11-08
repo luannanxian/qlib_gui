@@ -145,6 +145,76 @@ class ChartRepository(BaseRepository[ChartConfig]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def count(
+        self,
+        dataset_id: Optional[str] = None,
+        chart_type: Optional[ChartType | str] = None,
+        search_term: Optional[str] = None,
+        include_deleted: bool = False
+    ) -> int:
+        """
+        Count charts with optional filtering.
+
+        This method overrides BaseRepository.count() to properly handle
+        None values in filters and support search_term filtering.
+
+        Args:
+            dataset_id: Optional dataset ID filter
+            chart_type: Optional chart type filter
+            search_term: Optional name search term (case-insensitive)
+            include_deleted: Whether to include soft-deleted records
+
+        Returns:
+            Number of matching charts
+
+        Example:
+            # Count all charts
+            total = await repo.count()
+
+            # Count charts for a specific dataset
+            dataset_total = await repo.count(dataset_id="dataset-uuid-123")
+
+            # Count charts by type
+            kline_total = await repo.count(chart_type="kline")
+
+            # Count charts with search term
+            search_total = await repo.count(search_term="Bitcoin")
+        """
+        # For search_term, we need custom query logic
+        if search_term:
+            stmt = select(func.count()).select_from(ChartConfig)
+
+            # Apply filters
+            if dataset_id is not None:
+                stmt = stmt.where(ChartConfig.dataset_id == dataset_id)
+
+            if chart_type is not None:
+                type_str = chart_type.value if isinstance(chart_type, ChartType) else chart_type
+                stmt = stmt.where(ChartConfig.chart_type == type_str)
+
+            # Apply search term
+            stmt = stmt.where(ChartConfig.name.ilike(f"%{search_term}%"))
+
+            if not include_deleted:
+                stmt = stmt.where(ChartConfig.is_deleted == False)
+
+            result = await self.session.execute(stmt)
+            return result.scalar_one()
+
+        # No search term, use BaseRepository.count()
+        filters = {}
+
+        if dataset_id is not None:
+            filters["dataset_id"] = dataset_id
+
+        if chart_type is not None:
+            # Convert enum to string if needed
+            type_str = chart_type.value if isinstance(chart_type, ChartType) else chart_type
+            filters["chart_type"] = type_str
+
+        # Call parent count with filtered parameters
+        return await super().count(include_deleted=include_deleted, **filters)
+
     async def count_by_dataset(
         self,
         dataset_id: str,
@@ -312,6 +382,38 @@ class ChartRepository(BaseRepository[ChartConfig]):
 
         logger.debug(f"Chart statistics: {stats}")
         return stats
+
+    async def soft_delete(
+        self,
+        chart_id: str,
+        user_id: Optional[str] = None
+    ) -> bool:
+        """
+        Soft delete a chart configuration.
+
+        This method marks the chart as deleted without removing it from the database.
+        It delegates to BaseRepository.delete() with soft=True.
+
+        Args:
+            chart_id: Chart ID to delete
+            user_id: Optional user ID for audit trail
+
+        Returns:
+            True if deleted successfully, False if chart not found
+
+        Example:
+            success = await repo.soft_delete("chart-uuid-123")
+            if success:
+                print("Chart deleted successfully")
+        """
+        success = await self.delete(chart_id, soft=True, user_id=user_id)
+
+        if success:
+            logger.info(f"Soft deleted chart: id={chart_id}")
+        else:
+            logger.warning(f"Chart not found for deletion: id={chart_id}")
+
+        return success
 
     async def duplicate_chart(
         self,

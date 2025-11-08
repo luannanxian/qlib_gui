@@ -23,6 +23,10 @@ from app.modules.data_management.schemas.chart import (
 )
 from app.modules.data_management.services.chart_service import ChartService
 from app.modules.common.schemas.response import SuccessResponse, ErrorResponse
+from app.modules.data_management.utils.serialization import (
+    prepare_chart_data_for_serialization,
+    prepare_annotation_for_storage
+)
 
 router = APIRouter(prefix="/api/charts", tags=["Charts"])
 
@@ -109,10 +113,11 @@ async def list_charts(
             limit=limit
         )
 
-        # Count total
+        # Count total with same filters (including search)
         total = await chart_repo.count(
             dataset_id=dataset_id,
-            chart_type=chart_type
+            chart_type=chart_type,
+            search_term=search
         )
 
         return ChartConfigListResponse(
@@ -363,6 +368,11 @@ async def get_chart_data(
             )
             indicator_results = result_with_indicators["indicators"]
 
+        # Convert numpy types to native Python types for JSON serialization
+        ohlc_data = prepare_chart_data_for_serialization(ohlc_data)
+        if indicator_results:
+            indicator_results = prepare_chart_data_for_serialization(indicator_results)
+
         return ChartDataResponse(
             dataset_id=dataset.id,
             data=ohlc_data,
@@ -503,7 +513,10 @@ async def add_chart_annotation(
         if "annotations" not in current_config:
             current_config["annotations"] = []
 
-        current_config["annotations"].append(request.annotation.model_dump())
+        # Convert annotation to dict and serialize datetime fields
+        annotation_dict = request.annotation.model_dump()
+        annotation_dict = prepare_annotation_for_storage(annotation_dict)
+        current_config["annotations"].append(annotation_dict)
 
         # Update chart
         await chart_repo.update(chart_id, {"config": current_config})

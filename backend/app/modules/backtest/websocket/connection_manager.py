@@ -51,6 +51,9 @@ class ConnectionManager:
             if result_id in self.active_connections:
                 # Create a copy to avoid modification during iteration
                 connections = self.active_connections[result_id].copy()
+            else:
+                # No connections for this result_id, nothing to broadcast
+                return
 
         # Send to all connections (outside the lock to avoid blocking)
         disconnected = []

@@ -61,6 +61,79 @@ class TestTradeAnalysis:
         with pytest.raises(ResourceNotFoundError):
             await analysis_service.analyze_trades("nonexistent_id")
 
+    @pytest.mark.asyncio
+    async def test_analyze_trades_with_zero_win_rate(self, analysis_service: ResultsAnalysisService, db_session):
+        """Test analyzing trades when win_rate is 0 (all losses)."""
+        # ARRANGE - Create result with 0% win rate
+        from app.database.repositories.backtest_repository import BacktestRepository
+        from app.database.models import BacktestConfig, BacktestResult
+
+        repository = BacktestRepository(db_session)
+        config_data = {
+            "strategy_id": "strategy_zero_win",
+            "dataset_id": "dataset_zero_win",
+            "start_date": date(2023, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("100000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        result_data = {
+            "config_id": config.id,
+            "status": "COMPLETED",
+            "total_return": Decimal("-0.20"),
+            "annual_return": Decimal("-0.20"),
+            "sharpe_ratio": Decimal("-1.0"),
+            "max_drawdown": Decimal("0.30"),
+            "win_rate": Decimal("0.0"),  # 0% win rate
+        }
+        result = await repository.create_result(result_data)
+
+        # ACT
+        trade_stats = await analysis_service.analyze_trades(result.id)
+
+        # ASSERT
+        assert trade_stats["win_rate"] == Decimal("0.0")
+        assert trade_stats["profit_loss_ratio"] == Decimal("0.0")  # P/L ratio should be 0
+
+    @pytest.mark.asyncio
+    async def test_analyze_trades_with_perfect_win_rate(self, analysis_service: ResultsAnalysisService, db_session):
+        """Test analyzing trades when win_rate is 100% (all wins)."""
+        # ARRANGE - Create result with 100% win rate
+        from app.database.repositories.backtest_repository import BacktestRepository
+
+        repository = BacktestRepository(db_session)
+        config_data = {
+            "strategy_id": "strategy_perfect_win",
+            "dataset_id": "dataset_perfect_win",
+            "start_date": date(2023, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("100000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        result_data = {
+            "config_id": config.id,
+            "status": "COMPLETED",
+            "total_return": Decimal("0.50"),
+            "annual_return": Decimal("0.50"),
+            "sharpe_ratio": Decimal("3.0"),
+            "max_drawdown": Decimal("0.05"),
+            "win_rate": Decimal("1.0"),  # 100% win rate
+        }
+        result = await repository.create_result(result_data)
+
+        # ACT
+        trade_stats = await analysis_service.analyze_trades(result.id)
+
+        # ASSERT
+        assert trade_stats["win_rate"] == Decimal("1.0")
+        assert trade_stats["profit_loss_ratio"] is None  # P/L ratio is undefined for 100% win rate
+
 
 class TestPerformanceStatistics:
     """Test performance statistics functionality."""

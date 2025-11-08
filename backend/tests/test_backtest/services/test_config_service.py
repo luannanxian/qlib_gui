@@ -69,6 +69,22 @@ class TestValidateConfigParams:
     """Test configuration parameter validation."""
 
     @pytest.mark.asyncio
+    async def test_validate_missing_required_field(self, config_service: BacktestConfigService):
+        """Test missing required field raises error."""
+        config_data = {
+            "strategy_id": "strategy-123",
+            "dataset_id": "dataset-456",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2021, 12, 31),
+            "initial_capital": Decimal("100000.00"),
+            "commission_rate": Decimal("0.001"),
+            # Missing "slippage" required field
+        }
+
+        with pytest.raises(InvalidConfigError, match="Missing required field"):
+            await config_service.create_config(config_data)
+
+    @pytest.mark.asyncio
     async def test_validate_commission_rate_range(self, config_service: BacktestConfigService):
         """Test commission rate must be between 0 and 1."""
         config_data = {
@@ -271,6 +287,80 @@ class TestUpdateConfig:
 
         with pytest.raises(InvalidConfigError):
             await config_service.update_config(config.id, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_config_date_range(self, config_service: BacktestConfigService):
+        """Test updating configuration date range."""
+        # Create config
+        config_data = {
+            "strategy_id": "strategy-date",
+            "dataset_id": "dataset-date",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2021, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005")
+        }
+        config = await config_service.create_config(config_data)
+
+        # Update date range
+        update_data = {
+            "start_date": date(2020, 6, 1),
+            "end_date": date(2021, 6, 30)
+        }
+        updated_config = await config_service.update_config(config.id, update_data)
+
+        assert updated_config.start_date == date(2020, 6, 1)
+        assert updated_config.end_date == date(2021, 6, 30)
+
+    @pytest.mark.asyncio
+    async def test_update_config_with_invalid_date_range(self, config_service: BacktestConfigService):
+        """Test updating with invalid date range raises error."""
+        # Create config
+        config_data = {
+            "strategy_id": "strategy-date-invalid",
+            "dataset_id": "dataset-date-invalid",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2021, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005")
+        }
+        config = await config_service.create_config(config_data)
+
+        # Try to update with invalid date range (end before start)
+        update_data = {
+            "start_date": date(2021, 12, 31),
+            "end_date": date(2020, 1, 1)
+        }
+
+        with pytest.raises(InvalidDateRangeError):
+            await config_service.update_config(config.id, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_config_commission_and_slippage(self, config_service: BacktestConfigService):
+        """Test updating commission_rate and slippage together."""
+        # Create config
+        config_data = {
+            "strategy_id": "strategy-rates",
+            "dataset_id": "dataset-rates",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2021, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005")
+        }
+        config = await config_service.create_config(config_data)
+
+        # Update rates
+        update_data = {
+            "commission_rate": Decimal("0.002"),
+            "slippage": Decimal("0.001")
+        }
+        updated_config = await config_service.update_config(config.id, update_data)
+
+        assert updated_config.commission_rate == Decimal("0.002")
+        assert updated_config.slippage == Decimal("0.001")
 
 
 class TestDeleteConfig:

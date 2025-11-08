@@ -1250,3 +1250,683 @@ class TestCustomFactorServiceExceptionHandling:
         # ASSERT
         # Should return False on exception
         assert result is False
+
+
+@pytest.mark.asyncio
+class TestCustomFactorServiceUpdate:
+    """Test update_factor functionality."""
+
+    async def test_update_factor_by_owner(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor,
+        db_session: AsyncSession
+    ):
+        """Test updating a factor by its owner."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        update_data = {
+            "factor_name": "更新后的因子名",
+            "description": "更新的描述"
+        }
+
+        # ACT
+        result = await custom_factor_service.update_factor(factor_id, update_data, user_id)
+
+        # ASSERT
+        assert result is not None
+        assert "factor" in result
+        assert "message" in result
+        assert result["factor"]["factor_name"] == "更新后的因子名"
+        assert result["factor"]["description"] == "更新的描述"
+
+        # Verify in database
+        await db_session.refresh(sample_custom_factor)
+        assert sample_custom_factor.factor_name == "更新后的因子名"
+        assert sample_custom_factor.description == "更新的描述"
+
+    async def test_update_factor_formula(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor,
+        db_session: AsyncSession
+    ):
+        """Test updating factor formula."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        new_formula = "close * 2 + open"
+        update_data = {
+            "formula": new_formula
+        }
+
+        # ACT
+        result = await custom_factor_service.update_factor(factor_id, update_data, user_id)
+
+        # ASSERT
+        assert result is not None
+        assert result["factor"]["formula"] == new_formula
+
+    async def test_update_factor_formula_language(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor,
+        db_session: AsyncSession
+    ):
+        """Test updating formula_language."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        update_data = {
+            "formula_language": "python"
+        }
+
+        # ACT
+        result = await custom_factor_service.update_factor(factor_id, update_data, user_id)
+
+        # ASSERT
+        assert result is not None
+        assert result["factor"]["formula_language"] == "python"
+
+    async def test_update_factor_invalid_formula_language(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test updating with invalid formula_language."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        update_data = {
+            "formula_language": "invalid_lang"
+        }
+
+        # ACT & ASSERT
+        with pytest.raises(ValidationError) as exc_info:
+            await custom_factor_service.update_factor(factor_id, update_data, user_id)
+
+        assert "Invalid formula_language" in str(exc_info.value)
+
+    async def test_update_factor_by_non_owner(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test updating a factor by non-owner (should fail)."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        wrong_user_id = "different_user"
+        update_data = {
+            "factor_name": "试图修改"
+        }
+
+        # ACT & ASSERT
+        from app.modules.indicator.exceptions import AuthorizationError
+        with pytest.raises(AuthorizationError) as exc_info:
+            await custom_factor_service.update_factor(factor_id, update_data, wrong_user_id)
+
+        assert "not authorized" in str(exc_info.value).lower()
+
+    async def test_update_nonexistent_factor(
+        self,
+        custom_factor_service: CustomFactorService
+    ):
+        """Test updating non-existent factor."""
+        # ARRANGE
+        nonexistent_id = "00000000-0000-0000-0000-000000000000"
+        user_id = "user123"
+        update_data = {
+            "factor_name": "新名字"
+        }
+
+        # ACT
+        result = await custom_factor_service.update_factor(nonexistent_id, update_data, user_id)
+
+        # ASSERT
+        assert result is None
+
+    async def test_update_factor_prevents_user_id_change(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor,
+        db_session: AsyncSession
+    ):
+        """Test that user_id cannot be changed via update."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        original_user_id = sample_custom_factor.user_id
+        update_data = {
+            "factor_name": "新名字",
+            "user_id": "malicious_user_id"  # Should be removed
+        }
+
+        # ACT
+        result = await custom_factor_service.update_factor(factor_id, update_data, user_id)
+
+        # ASSERT
+        assert result is not None
+        assert result["factor"]["user_id"] == original_user_id
+
+        # Verify in database
+        await db_session.refresh(sample_custom_factor)
+        assert sample_custom_factor.user_id == original_user_id
+
+    async def test_update_multiple_fields(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor,
+        db_session: AsyncSession
+    ):
+        """Test updating multiple fields at once."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        update_data = {
+            "factor_name": "新因子名",
+            "formula": "close * 3",
+            "formula_language": "pandas",
+            "description": "更新的描述信息"
+        }
+
+        # ACT
+        result = await custom_factor_service.update_factor(factor_id, update_data, user_id)
+
+        # ASSERT
+        assert result is not None
+        assert result["factor"]["factor_name"] == "新因子名"
+        assert result["factor"]["formula"] == "close * 3"
+        assert result["factor"]["formula_language"] == "pandas"
+        assert result["factor"]["description"] == "更新的描述信息"
+
+    async def test_update_factor_empty_update_data(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor,
+        db_session: AsyncSession
+    ):
+        """Test updating with empty data (no changes)."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        original_name = sample_custom_factor.factor_name
+        update_data = {}
+
+        # ACT
+        result = await custom_factor_service.update_factor(factor_id, update_data, user_id)
+
+        # ASSERT
+        assert result is not None
+        assert result["factor"]["factor_name"] == original_name
+
+    async def test_update_factor_database_error(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test update_factor when database raises exception."""
+        # ARRANGE
+        from unittest.mock import patch
+        factor_id = sample_custom_factor.id
+        user_id = sample_custom_factor.user_id
+        update_data = {"factor_name": "新名字"}
+
+        # ACT & ASSERT
+        with patch.object(
+            custom_factor_service.custom_factor_repo,
+            'update',
+            side_effect=Exception("Update failed")
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await custom_factor_service.update_factor(factor_id, update_data, user_id)
+            assert "Update failed" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+class TestCustomFactorServiceToDict:
+    """Test _to_dict method."""
+
+    async def test_to_dict_basic_conversion(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test basic conversion of factor to dictionary."""
+        # ARRANGE
+        factor = sample_custom_factor
+
+        # ACT
+        result = custom_factor_service._to_dict(factor)
+
+        # ASSERT
+        assert isinstance(result, dict)
+        assert result["id"] == factor.id
+        assert result["factor_name"] == factor.factor_name
+        assert result["user_id"] == factor.user_id
+        assert result["formula"] == factor.formula
+        assert result["formula_language"] == factor.formula_language
+        assert result["status"] == factor.status
+        assert result["is_public"] == factor.is_public
+
+    async def test_to_dict_all_fields_present(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test that all required fields are present in dictionary."""
+        # ARRANGE
+        factor = sample_custom_factor
+
+        # ACT
+        result = custom_factor_service._to_dict(factor)
+
+        # ASSERT
+        required_fields = [
+            "id", "factor_name", "user_id", "base_indicator_id",
+            "formula", "formula_language", "description", "status",
+            "is_public", "published_at", "shared_at", "usage_count",
+            "clone_count", "cloned_from_id", "created_at", "updated_at"
+        ]
+        for field in required_fields:
+            assert field in result
+
+    async def test_to_dict_datetime_isoformat(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor,
+        db_session: AsyncSession
+    ):
+        """Test that datetime fields are converted to ISO format."""
+        # ARRANGE
+        factor = sample_custom_factor
+        await db_session.refresh(factor)
+
+        # ACT
+        result = custom_factor_service._to_dict(factor)
+
+        # ASSERT
+        # Check that datetime fields are either None or ISO format strings
+        if result["created_at"] is not None:
+            # Should be ISO format string
+            assert isinstance(result["created_at"], str)
+            assert "T" in result["created_at"]  # ISO format contains 'T'
+
+        if result["updated_at"] is not None:
+            assert isinstance(result["updated_at"], str)
+            assert "T" in result["updated_at"]
+
+        if result["published_at"] is not None:
+            assert isinstance(result["published_at"], str)
+            assert "T" in result["published_at"]
+
+        if result["shared_at"] is not None:
+            assert isinstance(result["shared_at"], str)
+            assert "T" in result["shared_at"]
+
+    async def test_to_dict_with_none_datetime_fields(
+        self,
+        custom_factor_service: CustomFactorService,
+        db_session: AsyncSession
+    ):
+        """Test _to_dict with None datetime fields."""
+        # ARRANGE
+        factor = CustomFactor(
+            factor_name="无日期因子",
+            user_id="user123",
+            formula="close",
+            formula_language="qlib_alpha",
+            published_at=None,
+            shared_at=None
+        )
+        db_session.add(factor)
+        await db_session.commit()
+        await db_session.refresh(factor)
+
+        # ACT
+        result = custom_factor_service._to_dict(factor)
+
+        # ASSERT
+        assert result["published_at"] is None
+        assert result["shared_at"] is None
+
+    async def test_to_dict_preserves_all_data(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test that _to_dict preserves all data without loss."""
+        # ARRANGE
+        factor = sample_custom_factor
+
+        # ACT
+        result = custom_factor_service._to_dict(factor)
+
+        # ASSERT
+        # Verify all string fields
+        assert result["factor_name"] == factor.factor_name
+        assert result["user_id"] == factor.user_id
+        assert result["formula"] == factor.formula
+        assert result["formula_language"] == factor.formula_language
+        assert result["description"] == factor.description
+        assert result["status"] == factor.status
+
+        # Verify boolean fields
+        assert result["is_public"] == factor.is_public
+
+        # Verify numeric fields
+        assert result["usage_count"] == factor.usage_count
+        assert result["clone_count"] == factor.clone_count
+
+    async def test_to_dict_with_unicode_content(
+        self,
+        custom_factor_service: CustomFactorService,
+        db_session: AsyncSession
+    ):
+        """Test _to_dict with Unicode content."""
+        # ARRANGE
+        factor = CustomFactor(
+            factor_name="🚀Unicode因子😊",
+            user_id="user123",
+            formula="close",
+            formula_language="qlib_alpha",
+            description="包含emoji和特殊字符：αβγδε"
+        )
+        db_session.add(factor)
+        await db_session.commit()
+        await db_session.refresh(factor)
+
+        # ACT
+        result = custom_factor_service._to_dict(factor)
+
+        # ASSERT
+        assert "🚀" in result["factor_name"]
+        assert "😊" in result["factor_name"]
+        assert "αβγδε" in result["description"]
+
+    async def test_to_dict_multiple_conversions(
+        self,
+        custom_factor_service: CustomFactorService,
+        db_session: AsyncSession
+    ):
+        """Test multiple consecutive _to_dict conversions."""
+        # ARRANGE
+        factors = [
+            CustomFactor(
+                factor_name=f"因子{i}",
+                user_id=f"user{i}",
+                formula=f"close * {i}",
+                formula_language="qlib_alpha"
+            )
+            for i in range(1, 6)
+        ]
+        for factor in factors:
+            db_session.add(factor)
+        await db_session.commit()
+
+        for factor in factors:
+            await db_session.refresh(factor)
+
+        # ACT
+        results = [custom_factor_service._to_dict(f) for f in factors]
+
+        # ASSERT
+        assert len(results) == 5
+        for i, result in enumerate(results, 1):
+            assert result["factor_name"] == f"因子{i}"
+            assert result["user_id"] == f"user{i}"
+
+
+@pytest.mark.asyncio
+class TestCustomFactorServiceAuthorizationAndSecurity:
+    """Test authorization and security aspects."""
+
+    async def test_get_factor_detail_authorization_public_factor(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_public_factor: CustomFactor
+    ):
+        """Test that any user can access public factors."""
+        # ARRANGE
+        factor_id = sample_public_factor.id
+        unrelated_user_id = "completely_different_user"
+
+        # ACT
+        result = await custom_factor_service.get_factor_detail(factor_id, unrelated_user_id)
+
+        # ASSERT
+        assert result is not None
+        assert "factor" in result
+
+    async def test_get_factor_detail_authorization_private_factor(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test that only owner can access private factors."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        wrong_user_id = "different_user"
+
+        # ACT
+        result = await custom_factor_service.get_factor_detail(factor_id, wrong_user_id)
+
+        # ASSERT
+        assert result is None
+
+    async def test_get_factor_detail_owner_access_private(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test that owner can access their private factors."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        owner_id = sample_custom_factor.user_id
+
+        # ACT
+        result = await custom_factor_service.get_factor_detail(factor_id, owner_id)
+
+        # ASSERT
+        assert result is not None
+        assert "factor" in result
+
+    async def test_delete_factor_by_non_owner_returns_false(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test that delete by non-owner returns False without exception."""
+        # ARRANGE
+        factor_id = sample_custom_factor.id
+        wrong_user_id = "different_user"
+
+        # ACT
+        result = await custom_factor_service.delete_factor(factor_id, wrong_user_id)
+
+        # ASSERT
+        assert result is False
+
+    async def test_clone_prevents_cloning_private_factors(
+        self,
+        custom_factor_service: CustomFactorService,
+        sample_custom_factor: CustomFactor
+    ):
+        """Test that private factors cannot be cloned."""
+        # ARRANGE
+        source_id = sample_custom_factor.id
+        assert sample_custom_factor.is_public is False
+
+        # ACT
+        result = await custom_factor_service.clone_factor(source_id, "new_user")
+
+        # ASSERT
+        assert result is None
+
+
+@pytest.mark.asyncio
+class TestCustomFactorServiceCompleteWorkflows:
+    """Test complete workflows and integration scenarios."""
+
+    async def test_complete_factor_lifecycle(
+        self,
+        custom_factor_service: CustomFactorService,
+        db_session: AsyncSession
+    ):
+        """Test complete factor lifecycle: create, update, publish, make public, clone, delete."""
+        # ARRANGE
+        user_id = "lifecycle_user"
+        factor_data = {
+            "factor_name": "生命周期因子",
+            "formula": "close",
+            "formula_language": "qlib_alpha"
+        }
+
+        # Step 1: Create
+        create_result = await custom_factor_service.create_factor(factor_data, user_id)
+        factor_id = create_result["factor"]["id"]
+        assert create_result["factor"]["status"] == FactorStatus.DRAFT.value
+        assert create_result["factor"]["is_public"] is False
+
+        # Step 2: Update
+        update_data = {"factor_name": "已更新的生命周期因子"}
+        update_result = await custom_factor_service.update_factor(factor_id, update_data, user_id)
+        assert update_result["factor"]["factor_name"] == "已更新的生命周期因子"
+
+        # Step 3: Publish
+        publish_result = await custom_factor_service.publish_factor(factor_id, user_id)
+        assert publish_result["factor"]["status"] == FactorStatus.PUBLISHED.value
+
+        # Step 4: Make public
+        public_result = await custom_factor_service.make_public(factor_id, user_id)
+        assert public_result["factor"]["is_public"] is True
+
+        # Step 5: Clone by another user
+        clone_user = "clone_user"
+        clone_result = await custom_factor_service.clone_factor(factor_id, clone_user)
+        assert clone_result is not None
+        cloned_id = clone_result["factor"]["id"]
+        assert cloned_id != factor_id
+        assert clone_result["factor"]["user_id"] == clone_user
+
+        # Step 6: Delete original
+        delete_result = await custom_factor_service.delete_factor(factor_id, user_id)
+        assert delete_result is True
+
+        # Verify original is deleted but clone still exists
+        original_detail = await custom_factor_service.get_factor_detail(factor_id, user_id)
+        assert original_detail is None
+
+        cloned_detail = await custom_factor_service.get_factor_detail(cloned_id, clone_user)
+        assert cloned_detail is not None
+
+    async def test_user_can_only_see_own_and_public_factors(
+        self,
+        custom_factor_service: CustomFactorService,
+        db_session: AsyncSession
+    ):
+        """Test that users only see their own and public factors."""
+        # ARRANGE
+        user_a = "user_a"
+        user_b = "user_b"
+
+        # Create factors for user A (one private, one public)
+        private_factor_a = CustomFactor(
+            factor_name="用户A的私有因子",
+            user_id=user_a,
+            formula="close",
+            formula_language="qlib_alpha",
+            status=FactorStatus.DRAFT.value,
+            is_public=False
+        )
+        public_factor_a = CustomFactor(
+            factor_name="用户A的公开因子",
+            user_id=user_a,
+            formula="open",
+            formula_language="qlib_alpha",
+            status=FactorStatus.PUBLISHED.value,
+            is_public=True
+        )
+        db_session.add(private_factor_a)
+        db_session.add(public_factor_a)
+
+        # Create private factor for user B
+        private_factor_b = CustomFactor(
+            factor_name="用户B的私有因子",
+            user_id=user_b,
+            formula="high",
+            formula_language="qlib_alpha",
+            status=FactorStatus.DRAFT.value,
+            is_public=False
+        )
+        db_session.add(private_factor_b)
+        await db_session.commit()
+
+        # ACT
+        # User A gets their own factors
+        result_a = await custom_factor_service.get_user_factors(user_a)
+        assert len([f for f in result_a["factors"] if f["user_id"] == user_a]) > 0
+
+        # User B tries to access A's private factor
+        access_attempt = await custom_factor_service.get_factor_detail(
+            private_factor_a.id,
+            user_b
+        )
+
+        # ASSERT
+        # User B should not see A's private factor
+        assert access_attempt is None
+
+        # But B can see A's public factor
+        public_access = await custom_factor_service.get_factor_detail(
+            public_factor_a.id,
+            user_b
+        )
+        assert public_access is not None
+
+    async def test_search_and_clone_workflow(
+        self,
+        custom_factor_service: CustomFactorService,
+        db_session: AsyncSession
+    ):
+        """Test searching for public factors and cloning them."""
+        # ARRANGE
+        original_creator = "original_creator"
+        searcher = "searcher"
+
+        # Create several public factors with searchable names
+        public_factors = [
+            CustomFactor(
+                factor_name=f"搜索测试因子{i}",
+                user_id=original_creator,
+                formula=f"close * {i}",
+                formula_language="qlib_alpha",
+                status=FactorStatus.PUBLISHED.value,
+                is_public=True,
+                usage_count=i * 10
+            )
+            for i in range(1, 6)
+        ]
+        for factor in public_factors:
+            db_session.add(factor)
+        await db_session.commit()
+
+        # ACT
+        # Search for public factors
+        search_result = await custom_factor_service.search_public_factors("搜索测试")
+
+        # ASSERT
+        assert len(search_result["factors"]) > 0
+        for factor in search_result["factors"]:
+            assert factor["is_public"] is True
+            assert "搜索测试" in factor["factor_name"]
+
+        # Clone the most popular one
+        if search_result["factors"]:
+            most_popular = max(search_result["factors"], key=lambda x: x["usage_count"])
+            clone_result = await custom_factor_service.clone_factor(
+                most_popular["id"],
+                searcher
+            )
+            assert clone_result is not None
+            assert clone_result["factor"]["user_id"] == searcher

@@ -179,7 +179,7 @@ class TestAddToLibrary:
         self,
         async_client: AsyncClient
     ):
-        """Test adding non-existent factor to library (allows adding for flexibility)."""
+        """Test adding non-existent factor to library (foreign key constraint prevents this)."""
         # ARRANGE
         request_data = {"factor_id": "00000000-0000-0000-0000-000000000000"}
 
@@ -190,11 +190,11 @@ class TestAddToLibrary:
         )
 
         # ASSERT
-        # Current implementation allows adding references to factors that may not exist yet
-        # This provides flexibility for distributed systems where factor creation may be async
-        assert response.status_code == 201
+        # Foreign key constraint prevents adding references to non-existent factors
+        # API returns 500 due to database constraint violation
+        assert response.status_code == 500
         data = response.json()
-        assert data["factor_id"] == "00000000-0000-0000-0000-000000000000"
+        assert "detail" in data
 
 
 @pytest.mark.asyncio

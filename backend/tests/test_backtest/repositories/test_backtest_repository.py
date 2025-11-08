@@ -576,3 +576,279 @@ class TestBacktestRepositoryQueries:
         assert completed_count >= 5
         assert running_count >= 2
         assert failed_count >= 1
+
+
+class TestBacktestRepositoryErrorHandling:
+    """Test suite for error handling in BacktestRepository"""
+
+    @pytest.mark.asyncio
+    async def test_create_config_database_error(self, db_session: AsyncSession):
+        """Test create_config handles database errors"""
+        from app.modules.backtest.exceptions import BacktestError
+        from unittest.mock import patch, AsyncMock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        repository = BacktestRepository(db_session)
+
+        config_data = {
+            "strategy_id": "strategy_error",
+            "dataset_id": "dataset_error",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+
+        # Mock commit to raise SQLAlchemyError
+        with patch.object(db_session, 'commit', new_callable=AsyncMock, side_effect=SQLAlchemyError("Database error")):
+            with pytest.raises(BacktestError, match="Failed to create backtest configuration"):
+                await repository.create_config(config_data)
+
+    @pytest.mark.asyncio
+    async def test_update_config_not_found(self, db_session: AsyncSession):
+        """Test update_config returns None for non-existent config"""
+        repository = BacktestRepository(db_session)
+
+        update_data = {"initial_capital": Decimal("2000000.00")}
+        result = await repository.update_config("non_existent_id", update_data)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update_config_database_error(self, db_session: AsyncSession):
+        """Test update_config handles database errors"""
+        from app.modules.backtest.exceptions import BacktestError
+        from unittest.mock import patch, AsyncMock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        repository = BacktestRepository(db_session)
+
+        # Create a config
+        config_data = {
+            "strategy_id": "strategy_update_error",
+            "dataset_id": "dataset_update_error",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        # Mock commit to raise SQLAlchemyError
+        update_data = {"initial_capital": Decimal("2000000.00")}
+        with patch.object(db_session, 'commit', new_callable=AsyncMock, side_effect=SQLAlchemyError("Database error")):
+            with pytest.raises(BacktestError, match="Failed to update backtest configuration"):
+                await repository.update_config(config.id, update_data)
+
+    @pytest.mark.asyncio
+    async def test_delete_config_not_found(self, db_session: AsyncSession):
+        """Test delete_config returns False for non-existent config"""
+        repository = BacktestRepository(db_session)
+
+        result = await repository.delete_config("non_existent_id")
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_delete_config_database_error(self, db_session: AsyncSession):
+        """Test delete_config handles database errors"""
+        from app.modules.backtest.exceptions import BacktestError
+        from unittest.mock import patch, AsyncMock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        repository = BacktestRepository(db_session)
+
+        # Create a config
+        config_data = {
+            "strategy_id": "strategy_delete_error",
+            "dataset_id": "dataset_delete_error",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        # Mock commit to raise SQLAlchemyError
+        with patch.object(db_session, 'commit', new_callable=AsyncMock, side_effect=SQLAlchemyError("Database error")):
+            with pytest.raises(BacktestError, match="Failed to delete backtest configuration"):
+                await repository.delete_config(config.id)
+
+    @pytest.mark.asyncio
+    async def test_create_result_database_error(self, db_session: AsyncSession):
+        """Test create_result handles database errors"""
+        from app.modules.backtest.exceptions import BacktestError
+        from unittest.mock import patch, AsyncMock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        repository = BacktestRepository(db_session)
+
+        # Create a config first
+        config_data = {
+            "strategy_id": "strategy_result_error",
+            "dataset_id": "dataset_result_error",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        result_data = {
+            "config_id": config.id,
+            "status": BacktestStatus.COMPLETED.value,
+            "total_return": Decimal("0.25"),
+            "annual_return": Decimal("0.08"),
+            "sharpe_ratio": Decimal("1.5"),
+            "max_drawdown": Decimal("0.15"),
+            "win_rate": Decimal("0.55"),
+        }
+
+        # Mock commit to raise SQLAlchemyError
+        with patch.object(db_session, 'commit', new_callable=AsyncMock, side_effect=SQLAlchemyError("Database error")):
+            with pytest.raises(BacktestError, match="Failed to create backtest result"):
+                await repository.create_result(result_data)
+
+    @pytest.mark.asyncio
+    async def test_update_result_status_not_found(self, db_session: AsyncSession):
+        """Test update_result_status returns None for non-existent result"""
+        repository = BacktestRepository(db_session)
+
+        result = await repository.update_result_status("non_existent_id", BacktestStatus.COMPLETED.value)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update_result_status_database_error(self, db_session: AsyncSession):
+        """Test update_result_status handles database errors"""
+        from app.modules.backtest.exceptions import BacktestError
+        from unittest.mock import patch, AsyncMock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        repository = BacktestRepository(db_session)
+
+        # Create config and result
+        config_data = {
+            "strategy_id": "strategy_status_error",
+            "dataset_id": "dataset_status_error",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        result_data = {
+            "config_id": config.id,
+            "status": BacktestStatus.PENDING.value,
+            "total_return": Decimal("0.0"),
+            "annual_return": Decimal("0.0"),
+            "sharpe_ratio": Decimal("0.0"),
+            "max_drawdown": Decimal("0.0"),
+            "win_rate": Decimal("0.0"),
+        }
+        result = await repository.create_result(result_data)
+
+        # Mock commit to raise SQLAlchemyError
+        with patch.object(db_session, 'commit', new_callable=AsyncMock, side_effect=SQLAlchemyError("Database error")):
+            with pytest.raises(BacktestError, match="Failed to update backtest result status"):
+                await repository.update_result_status(result.id, BacktestStatus.RUNNING.value)
+
+    @pytest.mark.asyncio
+    async def test_update_result_not_found(self, db_session: AsyncSession):
+        """Test update_result returns None for non-existent result"""
+        repository = BacktestRepository(db_session)
+
+        update_data = {"total_return": Decimal("0.30")}
+        result = await repository.update_result("non_existent_id", update_data)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update_result_database_error(self, db_session: AsyncSession):
+        """Test update_result handles database errors"""
+        from app.modules.backtest.exceptions import BacktestError
+        from unittest.mock import patch, AsyncMock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        repository = BacktestRepository(db_session)
+
+        # Create config and result
+        config_data = {
+            "strategy_id": "strategy_update_result_error",
+            "dataset_id": "dataset_update_result_error",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        result_data = {
+            "config_id": config.id,
+            "status": BacktestStatus.COMPLETED.value,
+            "total_return": Decimal("0.20"),
+            "annual_return": Decimal("0.08"),
+            "sharpe_ratio": Decimal("1.5"),
+            "max_drawdown": Decimal("0.15"),
+            "win_rate": Decimal("0.55"),
+        }
+        result = await repository.create_result(result_data)
+
+        # Mock commit to raise SQLAlchemyError
+        update_data = {"total_return": Decimal("0.30")}
+        with patch.object(db_session, 'commit', new_callable=AsyncMock, side_effect=SQLAlchemyError("Database error")):
+            with pytest.raises(BacktestError, match="Failed to update backtest result"):
+                await repository.update_result(result.id, update_data)
+
+    @pytest.mark.asyncio
+    async def test_delete_result_not_found(self, db_session: AsyncSession):
+        """Test delete_result returns False for non-existent result"""
+        repository = BacktestRepository(db_session)
+
+        result = await repository.delete_result("non_existent_id")
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_delete_result_database_error(self, db_session: AsyncSession):
+        """Test delete_result handles database errors"""
+        from app.modules.backtest.exceptions import BacktestError
+        from unittest.mock import patch, AsyncMock
+        from sqlalchemy.exc import SQLAlchemyError
+
+        repository = BacktestRepository(db_session)
+
+        # Create config and result
+        config_data = {
+            "strategy_id": "strategy_delete_result_error",
+            "dataset_id": "dataset_delete_result_error",
+            "start_date": date(2020, 1, 1),
+            "end_date": date(2023, 12, 31),
+            "initial_capital": Decimal("1000000.00"),
+            "commission_rate": Decimal("0.001"),
+            "slippage": Decimal("0.0005"),
+        }
+        config = await repository.create_config(config_data)
+
+        result_data = {
+            "config_id": config.id,
+            "status": BacktestStatus.COMPLETED.value,
+            "total_return": Decimal("0.20"),
+            "annual_return": Decimal("0.08"),
+            "sharpe_ratio": Decimal("1.5"),
+            "max_drawdown": Decimal("0.15"),
+            "win_rate": Decimal("0.55"),
+        }
+        result = await repository.create_result(result_data)
+
+        # Mock commit to raise SQLAlchemyError
+        with patch.object(db_session, 'commit', new_callable=AsyncMock, side_effect=SQLAlchemyError("Database error")):
+            with pytest.raises(BacktestError, match="Failed to delete backtest result"):
+                await repository.delete_result(result.id)

@@ -14,15 +14,18 @@ class DatasetCreate(BaseModel):
         name: Dataset name (unique identifier)
         source: Data source type (local, qlib, thirdparty)
         file_path: File path or URI to dataset location
-        extra_metadata: Optional additional metadata (JSON object)
+        extra_metadata: Optional additional metadata (JSON object, accepts "metadata" in API)
     """
     name: str = Field(..., min_length=1, max_length=255, description="Dataset name")
     source: DataSource = Field(..., description="Data source type")
     file_path: str = Field(..., min_length=1, description="File path or URI")
     extra_metadata: Optional[Dict[str, Any]] = Field(
         default_factory=dict,
-        description="Additional metadata (JSON object)"
+        alias="metadata",
+        description="Additional metadata (accepts both 'metadata' and 'extra_metadata')"
     )
+
+    model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("name")
     @classmethod
@@ -38,12 +41,19 @@ class DatasetUpdate(BaseModel):
     Schema for updating a dataset.
 
     All fields are optional - only provided fields will be updated.
+    Note: extra_metadata accepts both 'extra_metadata' and 'metadata' as input (validation_alias).
     """
     name: Optional[str] = Field(None, min_length=1, max_length=255, description="Dataset name")
     status: Optional[DatasetStatus] = Field(None, description="Dataset validation status")
     row_count: Optional[int] = Field(None, ge=0, description="Number of rows")
     columns: Optional[List[str]] = Field(None, description="List of column names")
-    extra_metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    extra_metadata: Optional[Dict[str, Any]] = Field(
+        None,
+        alias="metadata",
+        description="Additional metadata (accepts both 'metadata' and 'extra_metadata')"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("name")
     @classmethod

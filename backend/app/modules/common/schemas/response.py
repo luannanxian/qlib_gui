@@ -27,6 +27,20 @@ class APIResponse(BaseModel, Generic[T]):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
+class SuccessResponse(BaseModel):
+    """Simple success response with message"""
+
+    message: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class ErrorResponse(BaseModel):
+    """Simple error response with detail"""
+
+    detail: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
 # Helper functions
 def success_response(data: T) -> APIResponse[T]:
     """Create a successful API response"""

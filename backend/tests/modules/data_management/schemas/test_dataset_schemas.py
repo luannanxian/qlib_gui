@@ -71,7 +71,7 @@ class TestDatasetUpdate:
         assert schema.status == DatasetStatus.VALID
         assert schema.row_count == 1000
         assert schema.columns == ["col1", "col2"]
-        assert schema.metadata == {"version": "2.0"}
+        assert schema.extra_metadata == {"version": "2.0"}
 
     def test_dataset_update_schema_partial_fields(self):
         """Test DatasetUpdate schema with partial fields."""
@@ -84,7 +84,7 @@ class TestDatasetUpdate:
         assert schema.name is None
         assert schema.row_count is None
         assert schema.columns is None
-        assert schema.metadata is None
+        assert schema.extra_metadata is None
 
     def test_dataset_update_all_fields_optional(self):
         """Test DatasetUpdate all fields are optional."""
@@ -96,7 +96,7 @@ class TestDatasetUpdate:
         assert schema.status is None
         assert schema.row_count is None
         assert schema.columns is None
-        assert schema.metadata is None
+        assert schema.extra_metadata is None
 
 
 class TestDatasetResponse:
@@ -113,9 +113,9 @@ class TestDatasetResponse:
         schema = DatasetResponse(
             id="dataset-123",
             name="Test Dataset",
-            source=DataSource.QLIB,
+            source=DataSource.QLIB.value,  # Use string value
             file_path="/data/qlib.csv",
-            status=DatasetStatus.VALID,
+            status=DatasetStatus.VALID.value,  # Use string value
             row_count=500,
             columns=["open", "close"],
             metadata={"info": "test"},
@@ -125,12 +125,12 @@ class TestDatasetResponse:
 
         assert schema.id == "dataset-123"
         assert schema.name == "Test Dataset"
-        assert schema.source == DataSource.QLIB
+        assert schema.source == "qlib"
         assert schema.file_path == "/data/qlib.csv"
-        assert schema.status == DatasetStatus.VALID
+        assert schema.status == "valid"
         assert schema.row_count == 500
         assert schema.columns == ["open", "close"]
-        assert schema.metadata == {"info": "test"}
+        assert schema.extra_metadata == {"info": "test"}
         assert schema.created_at == now
         assert schema.updated_at == now
 
@@ -141,29 +141,29 @@ class TestDatasetResponse:
 
         dataset = Dataset(
             name="Model Dataset",
-            source=DataSource.LOCAL,
+            source=DataSource.LOCAL,  # Use enum
             file_path="/data/local.csv",
-            status=DatasetStatus.PENDING,
+            status=DatasetStatus.PENDING,  # Use enum
             row_count=100
         )
 
         schema = DatasetResponse(
             id=dataset.id,
             name=dataset.name,
-            source=dataset.source,
+            source=dataset.source.value,  # Convert enum to string
             file_path=dataset.file_path,
-            status=dataset.status,
+            status=dataset.status.value,  # Convert enum to string
             row_count=dataset.row_count,
             columns=dataset.columns,
-            metadata=dataset.metadata,
+            metadata={},  # Default empty dict
             created_at=dataset.created_at,
             updated_at=dataset.updated_at
         )
 
         assert schema.id == dataset.id
         assert schema.name == dataset.name
-        assert schema.source == dataset.source
-        assert schema.status == dataset.status
+        assert schema.source == dataset.source.value
+        assert schema.status == dataset.status.value
 
 
 class TestDatasetListResponse:
@@ -181,9 +181,9 @@ class TestDatasetListResponse:
             DatasetResponse(
                 id="1",
                 name="Dataset 1",
-                source=DataSource.LOCAL,
+                source=DataSource.LOCAL.value,
                 file_path="/data/1.csv",
-                status=DatasetStatus.VALID,
+                status=DatasetStatus.VALID.value,  # Use string value
                 row_count=100,
                 columns=[],
                 metadata={},
@@ -193,9 +193,9 @@ class TestDatasetListResponse:
             DatasetResponse(
                 id="2",
                 name="Dataset 2",
-                source=DataSource.QLIB,
+                source=DataSource.QLIB.value,  # Use string value
                 file_path="/data/2.csv",
-                status=DatasetStatus.PENDING,
+                status=DatasetStatus.PENDING.value,
                 row_count=200,
                 columns=[],
                 metadata={},

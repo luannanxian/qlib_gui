@@ -48,6 +48,33 @@ async def set_request_correlation_id(request: Request) -> str:
     return correlation_id
 
 
+def _dataset_to_response(dataset: Dataset) -> DatasetResponse:
+    """
+    Convert Dataset model to DatasetResponse.
+
+    Manual conversion to avoid Pydantic confusion between SQLAlchemy's metadata
+    attribute and the database field extra_metadata.
+
+    Args:
+        dataset: SQLAlchemy Dataset model instance
+
+    Returns:
+        DatasetResponse: Pydantic response model
+    """
+    return DatasetResponse(
+        id=dataset.id,
+        name=dataset.name,
+        source=dataset.source,
+        file_path=dataset.file_path,
+        status=dataset.status,
+        row_count=dataset.row_count,
+        columns=dataset.columns if isinstance(dataset.columns, list) else [],
+        extra_metadata=dataset.extra_metadata if isinstance(dataset.extra_metadata, dict) else {},
+        created_at=dataset.created_at,
+        updated_at=dataset.updated_at
+    )
+
+
 @router.get("", response_model=DatasetListResponse)
 @log_async_execution(level="INFO")
 async def list_datasets(
@@ -116,7 +143,7 @@ async def list_datasets(
         logger.info(f"Retrieved {len(datasets)} datasets (total: {total})")
 
         # Convert to response models
-        items = [DatasetResponse.model_validate(ds) for ds in datasets]
+        items = [_dataset_to_response(ds) for ds in datasets]
 
         return DatasetListResponse(total=total, items=items)
 
@@ -180,7 +207,7 @@ async def get_dataset(
 
         logger.info(f"Dataset retrieved successfully: id={dataset_id}, name={dataset.name}")
 
-        return DatasetResponse.model_validate(dataset)
+        return _dataset_to_response(dataset)
 
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -225,10 +252,7 @@ async def create_dataset(
         dataset_in.name = InputValidator.sanitize_name(dataset_in.name)
         dataset_in.file_path = InputValidator.sanitize_file_path(dataset_in.file_path)
 
-        # Validate JSON fields size
-        if dataset_in.columns:
-            import json
-            InputValidator.validate_json_size(json.dumps(dataset_in.columns))
+        # Validate JSON fields size (DatasetCreate only has extra_metadata, not columns)
         if dataset_in.extra_metadata:
             import json
             InputValidator.validate_json_size(json.dumps(dataset_in.extra_metadata))
@@ -262,7 +286,7 @@ async def create_dataset(
             f"source={dataset.source}"
         )
 
-        return DatasetResponse.model_validate(dataset)
+        return _dataset_to_response(dataset)
 
     except ValueError as e:
         # Input validation errors
@@ -374,7 +398,7 @@ async def update_dataset(
             f"updated_fields={list(update_data.keys())}"
         )
 
-        return DatasetResponse.model_validate(updated_dataset)
+        return _dataset_to_response(updated_dataset)
 
     except HTTPException:
         # Re-raise HTTP exceptions

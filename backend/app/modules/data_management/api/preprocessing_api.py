@@ -9,7 +9,7 @@ This module provides RESTful API endpoints for data preprocessing with:
 - Pagination and filtering support
 """
 
-from typing import Optional
+from typing import Optional, Dict, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, status, Query, Depends, Request
@@ -50,6 +50,53 @@ logger = get_logger(__name__)
 
 # API Router configuration
 router = APIRouter(prefix="/api/preprocessing", tags=["preprocessing"])
+
+
+# ==================== Helper Functions ====================
+
+def _rule_to_response(rule: DataPreprocessingRule) -> PreprocessingRuleResponse:
+    """
+    Convert DataPreprocessingRule model to PreprocessingRuleResponse.
+
+    This helper avoids Pydantic validation issues with SQLAlchemy metadata field.
+    Manually constructs the response object from rule attributes.
+    """
+    import json
+
+    # Parse metadata JSON if it's a string
+    metadata = rule.extra_metadata if rule.extra_metadata else {}
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except (json.JSONDecodeError, TypeError):
+            metadata = {}
+    elif not isinstance(metadata, dict):
+        metadata = {}
+
+    # Parse configuration JSON if it's a string
+    configuration = rule.configuration if rule.configuration else {}
+    if isinstance(configuration, str):
+        try:
+            configuration = json.loads(configuration)
+        except (json.JSONDecodeError, TypeError):
+            configuration = {}
+    elif not isinstance(configuration, dict):
+        configuration = {}
+
+    return PreprocessingRuleResponse(
+        id=str(rule.id),
+        name=rule.name,
+        description=rule.description,
+        rule_type=rule.rule_type,
+        configuration=configuration,
+        is_template=rule.is_template,
+        user_id=rule.user_id,
+        dataset_id=rule.dataset_id,
+        usage_count=rule.usage_count,
+        metadata=metadata,
+        created_at=rule.created_at,
+        updated_at=rule.updated_at
+    )
 
 
 async def set_request_correlation_id(request: Request) -> str:
@@ -116,7 +163,7 @@ async def create_preprocessing_rule(
             f"type={rule.rule_type}"
         )
 
-        return PreprocessingRuleResponse.model_validate(rule)
+        return _rule_to_response(rule)
 
     except ValueError as e:
         logger.warning(f"Invalid input in create rule: {e}")
@@ -226,7 +273,7 @@ async def list_preprocessing_rules(
         logger.info(f"Retrieved {len(rules)} rules (total: {total})")
 
         # Convert to response models
-        items = [PreprocessingRuleResponse.model_validate(rule) for rule in rules]
+        items = [_rule_to_response(rule) for rule in rules]
 
         return PreprocessingRuleListResponse(total=total, items=items)
 
@@ -289,7 +336,7 @@ async def get_preprocessing_rule(
 
         logger.info(f"Rule retrieved successfully: id={rule_id}, name={rule.name}")
 
-        return PreprocessingRuleResponse.model_validate(rule)
+        return _rule_to_response(rule)
 
     except HTTPException:
         raise
@@ -374,7 +421,7 @@ async def update_preprocessing_rule(
             f"updated_fields={list(update_data.keys())}"
         )
 
-        return PreprocessingRuleResponse.model_validate(updated_rule)
+        return _rule_to_response(updated_rule)
 
     except HTTPException:
         raise
@@ -628,7 +675,7 @@ async def get_preprocessing_task(
             f"progress={task.progress_percentage}%"
         )
 
-        return PreprocessingTaskResponse.model_validate(task)
+        return PreprocessingTaskResponse.model_validate(task, from_attributes=True)
 
     except HTTPException:
         raise

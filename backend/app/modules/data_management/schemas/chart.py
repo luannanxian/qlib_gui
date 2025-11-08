@@ -94,7 +94,7 @@ class MAConfig(BaseModel):
 
 class IndicatorRequest(BaseModel):
     """Request schema for indicator calculations"""
-    indicators: List[str] = Field(max_items=3)
+    indicators: Optional[List[str]] = Field(default=None, max_items=3)
     macd_params: Optional[MACDConfig] = None
     rsi_params: Optional[RSIConfig] = None
     kdj_params: Optional[KDJConfig] = None
@@ -102,6 +102,8 @@ class IndicatorRequest(BaseModel):
 
     @validator('indicators')
     def validate_indicators(cls, v):
+        if v is None:
+            return v
         valid_indicators = {'MACD', 'RSI', 'KDJ', 'MA', 'VOLUME'}
         for indicator in v:
             if indicator not in valid_indicators:

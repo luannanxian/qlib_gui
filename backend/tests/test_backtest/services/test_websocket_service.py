@@ -269,3 +269,261 @@ class TestConnectionManager:
         ws_bad.send_json.assert_called_once_with(message)
         # Bad connection should be cleaned up
         assert manager.get_connection_count(result_id) == 1
+
+
+class TestConnectionManagerErrorHandling:
+    """Test error handling in ConnectionManager."""
+
+    @pytest.fixture
+    def manager(self):
+        """Create a ConnectionManager instance for testing."""
+        return ConnectionManager()
+
+    @pytest.mark.asyncio
+    async def test_send_personal_message_with_failed_connection(self, manager: ConnectionManager, mocker):
+        """Test send_personal_message handles connection errors gracefully."""
+        # ARRANGE
+        ws = mocker.Mock()
+        ws.send_json = mocker.AsyncMock(side_effect=Exception("Connection closed"))
+        message = {"type": "test", "data": "message"}
+
+        # ACT - Should not raise exception
+        await manager.send_personal_message(message, ws)
+
+        # ASSERT
+        ws.send_json.assert_called_once_with(message)
+
+    @pytest.mark.asyncio
+    async def test_broadcast_to_nonexistent_result(self, manager: ConnectionManager):
+        """Test broadcasting to nonexistent result_id."""
+        # ARRANGE
+        message = {"type": "test", "data": "broadcast"}
+
+        # ACT - Should not raise exception
+        await manager.broadcast_to_result(message, "nonexistent_id")
+
+        # ASSERT - Should complete without error
+        assert "nonexistent_id" not in manager.active_connections
+
+    @pytest.mark.asyncio
+    async def test_disconnect_nonexistent_connection(self, manager: ConnectionManager, mocker):
+        """Test disconnecting a connection that doesn't exist."""
+        # ARRANGE
+        ws = mocker.Mock()
+        result_id = "test_result_id"
+
+        # ACT - Should not raise exception
+        await manager.disconnect(ws, result_id)
+
+        # ASSERT
+        assert result_id not in manager.active_connections
+
+    @pytest.mark.asyncio
+    async def test_disconnect_from_nonexistent_result(self, manager: ConnectionManager, mocker):
+        """Test disconnecting from a result_id that has no connections."""
+        # ARRANGE
+        ws = mocker.Mock()
+        ws.accept = mocker.AsyncMock()
+        await manager.connect(ws, "result_1")
+
+        # ACT - Disconnect from different result_id
+        await manager.disconnect(ws, "result_2")
+
+        # ASSERT - Original connection should still exist
+        assert manager.get_connection_count("result_1") == 1
+        assert manager.get_connection_count("result_2") == 0
+
+    @pytest.mark.asyncio
+    async def test_multiple_disconnects_same_connection(self, manager: ConnectionManager, mocker):
+        """Test disconnecting the same connection multiple times."""
+        # ARRANGE
+        ws = mocker.Mock()
+        ws.accept = mocker.AsyncMock()
+        result_id = "test_result_id"
+        await manager.connect(ws, result_id)
+
+        # ACT
+        await manager.disconnect(ws, result_id)
+        await manager.disconnect(ws, result_id)  # Second disconnect
+
+        # ASSERT - Should handle gracefully
+        assert manager.get_connection_count(result_id) == 0
+
+    @pytest.mark.asyncio
+    async def test_broadcast_with_all_failed_connections(self, manager: ConnectionManager, mocker):
+        """Test broadcast when all connections fail."""
+        # ARRANGE
+        result_id = "test_result_id"
+        ws1 = mocker.Mock()
+        ws1.send_json = mocker.AsyncMock(side_effect=Exception("Connection 1 failed"))
+        ws1.accept = mocker.AsyncMock()
+        ws2 = mocker.Mock()
+        ws2.send_json = mocker.AsyncMock(side_effect=Exception("Connection 2 failed"))
+        ws2.accept = mocker.AsyncMock()
+
+        await manager.connect(ws1, result_id)
+        await manager.connect(ws2, result_id)
+
+        message = {"type": "test", "data": "broadcast"}
+
+        # ACT
+        await manager.broadcast_to_result(message, result_id)
+
+        # ASSERT - All connections should be cleaned up
+        assert manager.get_connection_count(result_id) == 0
+
+    @pytest.mark.asyncio
+    async def test_concurrent_connect_disconnect(self, manager: ConnectionManager, mocker):
+        """Test concurrent connection and disconnection operations."""
+        # ARRANGE
+        import asyncio
+        result_id = "test_result_id"
+        connections = []
+
+        for i in range(5):
+            ws = mocker.Mock()
+            ws.accept = mocker.AsyncMock()
+            connections.append(ws)
+
+        # ACT - Connect all concurrently
+        await asyncio.gather(*[
+            manager.connect(ws, result_id) for ws in connections
+        ])
+
+        # ASSERT
+        assert manager.get_connection_count(result_id) == 5
+
+        # ACT - Disconnect all concurrently
+        await asyncio.gather(*[
+            manager.disconnect(ws, result_id) for ws in connections
+        ])
+
+        # ASSERT
+        assert manager.get_connection_count(result_id) == 0
+
+    @pytest.mark.asyncio
+    async def test_send_progress_update_with_no_connections(self, manager: ConnectionManager):
+        """Test sending progress update when no connections exist."""
+        # ACT - Should not raise exception
+        await manager.send_progress_update(
+            result_id="nonexistent_id",
+            percentage=50.0,
+            current_step=5,
+            total_steps=10,
+            message="Test"
+        )
+
+        # ASSERT - Should complete without error
+        assert manager.get_connection_count("nonexistent_id") == 0
+
+    @pytest.mark.asyncio
+    async def test_send_log_message_with_no_connections(self, manager: ConnectionManager):
+        """Test sending log message when no connections exist."""
+        # ACT - Should not raise exception
+        await manager.send_log_message(
+            result_id="nonexistent_id",
+            level="INFO",
+            message="Test log"
+        )
+
+        # ASSERT - Should complete without error
+        assert manager.get_connection_count("nonexistent_id") == 0
+
+    @pytest.mark.asyncio
+    async def test_send_metrics_update_with_no_connections(self, manager: ConnectionManager):
+        """Test sending metrics update when no connections exist."""
+        # ACT - Should not raise exception
+        await manager.send_metrics_update(
+            result_id="nonexistent_id",
+            metrics={"return": 0.15}
+        )
+
+        # ASSERT - Should complete without error
+        assert manager.get_connection_count("nonexistent_id") == 0
+
+    @pytest.mark.asyncio
+    async def test_send_completion_with_no_connections(self, manager: ConnectionManager):
+        """Test sending completion when no connections exist."""
+        # ACT - Should not raise exception
+        await manager.send_completion(
+            result_id="nonexistent_id",
+            status="COMPLETED"
+        )
+
+        # ASSERT - Should complete without error
+        assert manager.get_connection_count("nonexistent_id") == 0
+
+    @pytest.mark.asyncio
+    async def test_broadcast_partial_connection_failure(self, manager: ConnectionManager, mocker):
+        """Test broadcast with some connections failing mid-transmission."""
+        # ARRANGE
+        result_id = "test_result_id"
+        ws1 = mocker.Mock()
+        ws1.send_json = mocker.AsyncMock()
+        ws1.accept = mocker.AsyncMock()
+        ws2 = mocker.Mock()
+        ws2.send_json = mocker.AsyncMock(side_effect=RuntimeError("Network error"))
+        ws2.accept = mocker.AsyncMock()
+        ws3 = mocker.Mock()
+        ws3.send_json = mocker.AsyncMock()
+        ws3.accept = mocker.AsyncMock()
+
+        await manager.connect(ws1, result_id)
+        await manager.connect(ws2, result_id)
+        await manager.connect(ws3, result_id)
+
+        message = {"type": "test", "data": "broadcast"}
+
+        # ACT
+        await manager.broadcast_to_result(message, result_id)
+
+        # ASSERT
+        # Good connections should receive message
+        ws1.send_json.assert_called_once_with(message)
+        ws3.send_json.assert_called_once_with(message)
+        # Failed connection should be cleaned up
+        assert manager.get_connection_count(result_id) == 2
+
+    def test_get_connection_count_for_nonexistent_result(self, manager: ConnectionManager):
+        """Test getting connection count for nonexistent result."""
+        # ACT
+        count = manager.get_connection_count("nonexistent_id")
+
+        # ASSERT
+        assert count == 0
+
+    @pytest.mark.asyncio
+    async def test_connection_manager_isolation_between_results(self, manager: ConnectionManager, mocker):
+        """Test that connections are properly isolated between different result_ids."""
+        # ARRANGE
+        ws1 = mocker.Mock()
+        ws1.accept = mocker.AsyncMock()
+        ws1.send_json = mocker.AsyncMock()
+        ws2 = mocker.Mock()
+        ws2.accept = mocker.AsyncMock()
+        ws2.send_json = mocker.AsyncMock()
+
+        # ACT - Connect to different results
+        await manager.connect(ws1, "result_1")
+        await manager.connect(ws2, "result_2")
+
+        # Broadcast to result_1 only
+        message = {"type": "test", "data": "message"}
+        await manager.broadcast_to_result(message, "result_1")
+
+        # ASSERT
+        ws1.send_json.assert_called_once_with(message)
+        ws2.send_json.assert_not_called()  # Should not receive message
+
+    @pytest.mark.asyncio
+    async def test_send_error_with_failed_connection(self, manager: ConnectionManager, mocker):
+        """Test send_error handles connection failures gracefully."""
+        # ARRANGE
+        ws = mocker.Mock()
+        ws.send_json = mocker.AsyncMock(side_effect=Exception("Connection closed"))
+
+        # ACT - Should not raise exception
+        await manager.send_error(ws, "Test error", "ERROR_CODE")
+
+        # ASSERT
+        ws.send_json.assert_called_once()

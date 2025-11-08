@@ -52,6 +52,7 @@ TEST_DATABASE_URL = os.getenv(
 
 # Determine database type
 IS_MYSQL = "mysql" in TEST_DATABASE_URL
+IS_SQLITE = "sqlite" in TEST_DATABASE_URL
 
 # Connection pool settings from environment (with defaults)
 TEST_DB_POOL_SIZE = int(os.getenv("TEST_DB_POOL_SIZE", "5"))
@@ -183,8 +184,6 @@ def pytest_configure(config):
     """Configure custom pytest markers."""
     config.addinivalue_line(
         "markers", "mysql: mark test to run only with MySQL database"
-    )
-    config.addinivalue_line(
     )
 
 

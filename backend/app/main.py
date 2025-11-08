@@ -9,11 +9,12 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.modules.user_onboarding.api import mode_api
-from app.modules.data_management.api import dataset_api, preprocessing_api, import_api
+from app.modules.data_management.api import dataset_api, preprocessing_api, import_api, chart_api
 from app.modules.strategy.api import strategy_api
 from app.modules.indicator.api import indicator_api, custom_factor_api, user_library_api
 from app.modules.backtest.api import backtest_api, websocket_api
 from app.modules.task_scheduling.api import task_api
+from app.modules.code_security.api import router as security_router
 
 # Import database
 from app.database import db_manager
@@ -155,6 +156,7 @@ app.include_router(mode_api.router, prefix="/api/user", tags=["user"])
 app.include_router(dataset_api.router)
 app.include_router(preprocessing_api.router)
 app.include_router(import_api.router)
+app.include_router(chart_api.router)
 app.include_router(strategy_api.router)
 app.include_router(indicator_api.router)
 app.include_router(custom_factor_api.router)
@@ -162,6 +164,7 @@ app.include_router(user_library_api.router)
 app.include_router(backtest_api.router)
 app.include_router(websocket_api.router, tags=["websocket"])
 app.include_router(task_api.router)
+app.include_router(security_router, prefix="/api/security", tags=["code-security"])
 
 
 @app.get("/")
