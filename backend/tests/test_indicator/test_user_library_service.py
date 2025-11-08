@@ -25,7 +25,7 @@ async def sample_library_data() -> Dict[str, Any]:
 class TestUserLibraryService:
     """UserLibraryService测试套件"""
 
-    async def test_get_user_library(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_get_user_library(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试获取用户的库项目"""
         # Create library entries
         await user_library_repo.create(sample_library_data, commit=True)
@@ -40,7 +40,7 @@ class TestUserLibraryService:
         assert result["total"] == 2
         assert all(item["user_id"] == "user123" for item in result["items"])
 
-    async def test_get_user_library_with_pagination(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_get_user_library_with_pagination(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试分页获取用户库"""
         # Create 5 library entries
         for i in range(5):
@@ -109,7 +109,7 @@ class TestUserLibraryService:
         assert result is not None
         assert result["item"]["user_id"] == "user123"
 
-    async def test_toggle_favorite(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_toggle_favorite(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试切换收藏状态"""
         created = await user_library_repo.create(sample_library_data, commit=True)
         assert created.is_favorite is False
@@ -134,7 +134,7 @@ class TestUserLibraryService:
         assert result is not None
         assert result["item"]["is_favorite"] is False
 
-    async def test_toggle_favorite_unauthorized(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_toggle_favorite_unauthorized(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试未授权切换收藏"""
         await user_library_repo.create(sample_library_data, commit=True)
 
@@ -147,7 +147,7 @@ class TestUserLibraryService:
 
         assert result is None
 
-    async def test_increment_library_usage(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_increment_library_usage(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试增加库项目使用次数"""
         created = await user_library_repo.create(sample_library_data, commit=True)
         initial_count = created.usage_count
@@ -163,7 +163,7 @@ class TestUserLibraryService:
         updated = await user_library_repo.find_library_item("user123", factor_id="factor_001")
         assert updated.usage_count == initial_count + 1
 
-    async def test_get_favorites(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_get_favorites(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试获取收藏项"""
         # Create favorite item
         favorite_data = sample_library_data.copy()
@@ -181,7 +181,7 @@ class TestUserLibraryService:
         assert result["items"][0]["is_favorite"] is True
         assert result["items"][0]["factor_id"] == "factor_001"
 
-    async def test_get_most_used(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_get_most_used(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试获取最常用项"""
         # Create items with different usage counts
         for i in range(3):
@@ -202,7 +202,7 @@ class TestUserLibraryService:
         # Should be ordered by usage_count desc
         assert result["items"][0]["usage_count"] >= result["items"][1]["usage_count"]
 
-    async def test_remove_from_library(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_remove_from_library(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试从库中移除项目"""
         created = await user_library_repo.create(sample_library_data, commit=True)
 
@@ -217,7 +217,7 @@ class TestUserLibraryService:
         removed = await user_library_repo.find_library_item("user123", factor_id="factor_001")
         assert removed is None
 
-    async def test_remove_from_library_unauthorized(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_remove_from_library_unauthorized(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试未授权移除库项目"""
         await user_library_repo.create(sample_library_data, commit=True)
 
@@ -228,7 +228,7 @@ class TestUserLibraryService:
 
         assert success is False
 
-    async def test_get_library_stats(self, user_library_service, user_library_repo, sample_library_data):
+    async def test_get_library_stats(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors):
         """测试获取库统计信息"""
         # Create library items
         for i in range(5):
@@ -283,7 +283,7 @@ class TestUserLibraryService:
         with pytest.raises(RuntimeError, match="Database error"):
             await user_library_service.toggle_favorite("user123", "factor_001", True)
 
-    async def test_toggle_favorite_update_returns_none(self, user_library_service, user_library_repo, sample_library_data, monkeypatch):
+    async def test_toggle_favorite_update_returns_none(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors, monkeypatch):
         """测试toggle_favorite当update返回None时"""
         created = await user_library_repo.create(sample_library_data, commit=True)
 
@@ -301,7 +301,7 @@ class TestUserLibraryService:
         result = await user_library_service.increment_usage("user123", "nonexistent_factor")
         assert result is False
 
-    async def test_increment_usage_exception_handling(self, user_library_service, user_library_repo, sample_library_data, monkeypatch):
+    async def test_increment_usage_exception_handling(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors, monkeypatch):
         """测试increment_usage异常处理"""
         await user_library_repo.create(sample_library_data, commit=True)
 
@@ -338,7 +338,7 @@ class TestUserLibraryService:
         result = await user_library_service.remove_from_library("user123", "nonexistent_factor")
         assert result is False
 
-    async def test_remove_from_library_exception_handling(self, user_library_service, user_library_repo, sample_library_data, monkeypatch):
+    async def test_remove_from_library_exception_handling(self, user_library_service, user_library_repo, sample_library_data, sample_custom_factors, monkeypatch):
         """测试remove_from_library异常处理"""
         await user_library_repo.create(sample_library_data, commit=True)
 

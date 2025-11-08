@@ -18,6 +18,7 @@ from app.database.models import (
     Dataset, ChartConfig, UserPreferences, ImportTask,
     IndicatorComponent, CustomFactor, FactorValidationResult, UserFactorLibrary
 )
+from app.database.models.indicator import FactorStatus
 from app.database.repositories.indicator_repository import IndicatorRepository
 from app.database.repositories.custom_factor_repository import CustomFactorRepository
 from app.database.repositories.factor_validation_repository import FactorValidationResultRepository
@@ -128,3 +129,26 @@ async def custom_factor_service(custom_factor_repo: CustomFactorRepository) -> C
 async def user_library_service(user_library_repo: UserFactorLibraryRepository) -> UserLibraryService:
     """Create a UserLibraryService instance for testing"""
     return UserLibraryService(user_library_repo)
+
+
+@pytest_asyncio.fixture
+async def sample_custom_factors(db_session: AsyncSession, custom_factor_repo: CustomFactorRepository):
+    """Create sample custom factors for testing user library operations"""
+    factors = []
+
+    # Create factors that match the IDs used in sample_library_data
+    for i in range(10):
+        factor_data = {
+            "id": f"factor_{i:03d}",
+            "factor_name": f"Test Factor {i}",
+            "user_id": "user123",
+            "formula": f"close / open * {i+1}",
+            "formula_language": "qlib_alpha",
+            "status": FactorStatus.PUBLISHED.value,
+            "is_public": True
+        }
+        factor = await custom_factor_repo.create(factor_data, commit=False)
+        factors.append(factor)
+
+    await db_session.commit()
+    return factors
