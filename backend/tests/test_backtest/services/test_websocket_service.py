@@ -10,7 +10,6 @@ Test coverage for:
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 
 from app.modules.backtest.websocket.connection_manager import ConnectionManager
@@ -25,18 +24,18 @@ class TestConnectionManager:
         return ConnectionManager()
 
     @pytest.fixture
-    def mock_websocket(self):
+    def mock_websocket(self, mocker):
         """Create a mock WebSocket connection."""
-        ws = Mock()
-        ws.send_json = AsyncMock()
+        ws = mocker.Mock()
+        ws.send_json = mocker.AsyncMock()
         return ws
 
     @pytest.mark.asyncio
-    async def test_connect_websocket(self, manager: ConnectionManager, mock_websocket):
+    async def test_connect_websocket(self, manager: ConnectionManager, mock_websocket, mocker):
         """Test connecting a WebSocket."""
         # ARRANGE
         result_id = "test_result_id"
-        mock_websocket.accept = AsyncMock()
+        mock_websocket.accept = mocker.AsyncMock()
 
         # ACT
         await manager.connect(mock_websocket, result_id)
@@ -47,11 +46,11 @@ class TestConnectionManager:
         assert mock_websocket in manager.active_connections[result_id]
 
     @pytest.mark.asyncio
-    async def test_disconnect_websocket(self, manager: ConnectionManager, mock_websocket):
+    async def test_disconnect_websocket(self, manager: ConnectionManager, mock_websocket, mocker):
         """Test disconnecting a WebSocket."""
         # ARRANGE
         result_id = "test_result_id"
-        mock_websocket.accept = AsyncMock()
+        mock_websocket.accept = mocker.AsyncMock()
         await manager.connect(mock_websocket, result_id)
 
         # ACT
@@ -73,16 +72,16 @@ class TestConnectionManager:
         mock_websocket.send_json.assert_called_once_with(message)
 
     @pytest.mark.asyncio
-    async def test_broadcast_to_result(self, manager: ConnectionManager):
+    async def test_broadcast_to_result(self, manager: ConnectionManager, mocker):
         """Test broadcasting a message to all connections for a result."""
         # ARRANGE
         result_id = "test_result_id"
-        ws1 = Mock()
-        ws1.send_json = AsyncMock()
-        ws1.accept = AsyncMock()
-        ws2 = Mock()
-        ws2.send_json = AsyncMock()
-        ws2.accept = AsyncMock()
+        ws1 = mocker.Mock()
+        ws1.send_json = mocker.AsyncMock()
+        ws1.accept = mocker.AsyncMock()
+        ws2 = mocker.Mock()
+        ws2.send_json = mocker.AsyncMock()
+        ws2.accept = mocker.AsyncMock()
 
         await manager.connect(ws1, result_id)
         await manager.connect(ws2, result_id)
@@ -97,11 +96,11 @@ class TestConnectionManager:
         ws2.send_json.assert_called_once_with(message)
 
     @pytest.mark.asyncio
-    async def test_send_progress_update(self, manager: ConnectionManager, mock_websocket):
+    async def test_send_progress_update(self, manager: ConnectionManager, mock_websocket, mocker):
         """Test sending progress update."""
         # ARRANGE
         result_id = "test_result_id"
-        mock_websocket.accept = AsyncMock()
+        mock_websocket.accept = mocker.AsyncMock()
         await manager.connect(mock_websocket, result_id)
 
         # ACT
@@ -122,11 +121,11 @@ class TestConnectionManager:
         assert call_args["total_steps"] == 10
 
     @pytest.mark.asyncio
-    async def test_send_log_message(self, manager: ConnectionManager, mock_websocket):
+    async def test_send_log_message(self, manager: ConnectionManager, mock_websocket, mocker):
         """Test sending log message."""
         # ARRANGE
         result_id = "test_result_id"
-        mock_websocket.accept = AsyncMock()
+        mock_websocket.accept = mocker.AsyncMock()
         await manager.connect(mock_websocket, result_id)
 
         # ACT
@@ -144,11 +143,11 @@ class TestConnectionManager:
         assert call_args["message"] == "Test log message"
 
     @pytest.mark.asyncio
-    async def test_send_metrics_update(self, manager: ConnectionManager, mock_websocket):
+    async def test_send_metrics_update(self, manager: ConnectionManager, mock_websocket, mocker):
         """Test sending metrics update."""
         # ARRANGE
         result_id = "test_result_id"
-        mock_websocket.accept = AsyncMock()
+        mock_websocket.accept = mocker.AsyncMock()
         await manager.connect(mock_websocket, result_id)
 
         metrics = {
@@ -166,11 +165,11 @@ class TestConnectionManager:
         assert call_args["metrics"] == metrics
 
     @pytest.mark.asyncio
-    async def test_send_completion(self, manager: ConnectionManager, mock_websocket):
+    async def test_send_completion(self, manager: ConnectionManager, mock_websocket, mocker):
         """Test sending completion notification."""
         # ARRANGE
         result_id = "test_result_id"
-        mock_websocket.accept = AsyncMock()
+        mock_websocket.accept = mocker.AsyncMock()
         await manager.connect(mock_websocket, result_id)
 
         # ACT
@@ -212,14 +211,14 @@ class TestConnectionManager:
         assert count_before == 0
 
     @pytest.mark.asyncio
-    async def test_multiple_connections_same_result(self, manager: ConnectionManager):
+    async def test_multiple_connections_same_result(self, manager: ConnectionManager, mocker):
         """Test multiple connections to the same result."""
         # ARRANGE
         result_id = "test_result_id"
-        ws1 = Mock()
-        ws1.accept = AsyncMock()
-        ws2 = Mock()
-        ws2.accept = AsyncMock()
+        ws1 = mocker.Mock()
+        ws1.accept = mocker.AsyncMock()
+        ws2 = mocker.Mock()
+        ws2.accept = mocker.AsyncMock()
 
         # ACT
         await manager.connect(ws1, result_id)
@@ -229,11 +228,11 @@ class TestConnectionManager:
         assert manager.get_connection_count(result_id) == 2
 
     @pytest.mark.asyncio
-    async def test_connection_cleanup(self, manager: ConnectionManager, mock_websocket):
+    async def test_connection_cleanup(self, manager: ConnectionManager, mock_websocket, mocker):
         """Test connection cleanup after disconnect."""
         # ARRANGE
         result_id = "test_result_id"
-        mock_websocket.accept = AsyncMock()
+        mock_websocket.accept = mocker.AsyncMock()
         await manager.connect(mock_websocket, result_id)
 
         # ACT
@@ -244,16 +243,16 @@ class TestConnectionManager:
         assert result_id not in manager.active_connections
 
     @pytest.mark.asyncio
-    async def test_broadcast_handles_failed_connections(self, manager: ConnectionManager):
+    async def test_broadcast_handles_failed_connections(self, manager: ConnectionManager, mocker):
         """Test broadcast handles failed connections gracefully."""
         # ARRANGE
         result_id = "test_result_id"
-        ws_good = Mock()
-        ws_good.send_json = AsyncMock()
-        ws_good.accept = AsyncMock()
-        ws_bad = Mock()
-        ws_bad.send_json = AsyncMock(side_effect=Exception("Connection failed"))
-        ws_bad.accept = AsyncMock()
+        ws_good = mocker.Mock()
+        ws_good.send_json = mocker.AsyncMock()
+        ws_good.accept = mocker.AsyncMock()
+        ws_bad = mocker.Mock()
+        ws_bad.send_json = mocker.AsyncMock(side_effect=Exception("Connection failed"))
+        ws_bad.accept = mocker.AsyncMock()
 
         await manager.connect(ws_good, result_id)
         await manager.connect(ws_bad, result_id)

@@ -42,7 +42,18 @@ class ResultsAnalysisService:
         # Calculate profit/loss ratio from win rate
         # Simplified calculation: assuming equal position sizes
         win_rate = result.win_rate
-        profit_loss_ratio = win_rate / (Decimal("1.0") - win_rate) if win_rate < Decimal("1.0") else Decimal("0.0")
+
+        # Handle edge cases for profit/loss ratio calculation
+        if win_rate <= Decimal("0.0"):
+            # No wins, P/L ratio is 0
+            profit_loss_ratio = Decimal("0.0")
+        elif win_rate >= Decimal("1.0"):
+            # All wins, P/L ratio is undefined (represented as None)
+            profit_loss_ratio = None
+        else:
+            # Normal case: calculate ratio
+            loss_rate = Decimal("1.0") - win_rate
+            profit_loss_ratio = win_rate / loss_rate
 
         return {
             "win_rate": result.win_rate,

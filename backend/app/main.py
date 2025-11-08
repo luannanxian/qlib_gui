@@ -13,6 +13,7 @@ from app.modules.data_management.api import dataset_api, preprocessing_api, impo
 from app.modules.strategy.api import strategy_api
 from app.modules.indicator.api import indicator_api, custom_factor_api, user_library_api
 from app.modules.backtest.api import backtest_api, websocket_api
+from app.modules.task_scheduling.api import task_api
 
 # Import database
 from app.database import db_manager
@@ -160,6 +161,7 @@ app.include_router(custom_factor_api.router)
 app.include_router(user_library_api.router)
 app.include_router(backtest_api.router)
 app.include_router(websocket_api.router, tags=["websocket"])
+app.include_router(task_api.router)
 
 
 @app.get("/")

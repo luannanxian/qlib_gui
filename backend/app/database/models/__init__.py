@@ -49,6 +49,12 @@ from app.database.models.backtest import (
     BacktestResult,
     BacktestStatus,
 )
+from app.database.models.task import (
+    Task,
+    TaskType,
+    TaskStatus,
+    TaskPriority,
+)
 
 __all__ = [
     # Models
@@ -67,6 +73,7 @@ __all__ = [
     "UserFactorLibrary",
     "BacktestConfig",
     "BacktestResult",
+    "Task",
     # Enums - Dataset
     "DataSource",
     "DatasetStatus",
@@ -103,4 +110,8 @@ __all__ = [
     "LibraryItemStatus",
     # Enums - Backtest
     "BacktestStatus",
+    # Enums - Task
+    "TaskType",
+    "TaskStatus",
+    "TaskPriority",
 ]

@@ -14,11 +14,16 @@ Features:
 
 from datetime import date
 from typing import List, Optional, Dict, Any
+import logging
 
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database.models.backtest import BacktestConfig, BacktestResult, BacktestStatus
+from app.modules.backtest.exceptions import BacktestError
+
+logger = logging.getLogger(__name__)
 
 
 class BacktestRepository:
@@ -44,12 +49,21 @@ class BacktestRepository:
 
         Returns:
             Created BacktestConfig instance
+
+        Raises:
+            BacktestError: If database operation fails
         """
-        config = BacktestConfig(**config_data)
-        self.session.add(config)
-        await self.session.commit()
-        await self.session.refresh(config)
-        return config
+        try:
+            config = BacktestConfig(**config_data)
+            self.session.add(config)
+            await self.session.commit()
+            await self.session.refresh(config)
+            logger.info(f"Created backtest config: {config.id}")
+            return config
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Failed to create config: {str(e)}", exc_info=True)
+            raise BacktestError(f"Failed to create backtest configuration: {str(e)}") from e
 
     async def get_config_by_id(self, config_id: str) -> Optional[BacktestConfig]:
         """
@@ -153,18 +167,27 @@ class BacktestRepository:
 
         Returns:
             Updated BacktestConfig instance or None if not found
+
+        Raises:
+            BacktestError: If database operation fails
         """
-        config = await self.get_config_by_id(config_id)
-        if not config:
-            return None
+        try:
+            config = await self.get_config_by_id(config_id)
+            if not config:
+                return None
 
-        for key, value in update_data.items():
-            if hasattr(config, key):
-                setattr(config, key, value)
+            for key, value in update_data.items():
+                if hasattr(config, key):
+                    setattr(config, key, value)
 
-        await self.session.commit()
-        await self.session.refresh(config)
-        return config
+            await self.session.commit()
+            await self.session.refresh(config)
+            logger.info(f"Updated backtest config: {config_id}")
+            return config
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Failed to update config {config_id}: {str(e)}", exc_info=True)
+            raise BacktestError(f"Failed to update backtest configuration: {str(e)}") from e
 
     async def delete_config(self, config_id: str) -> bool:
         """
@@ -175,14 +198,23 @@ class BacktestRepository:
 
         Returns:
             True if deleted, False if not found
-        """
-        config = await self.get_config_by_id(config_id)
-        if not config:
-            return False
 
-        config.is_deleted = True
-        await self.session.commit()
-        return True
+        Raises:
+            BacktestError: If database operation fails
+        """
+        try:
+            config = await self.get_config_by_id(config_id)
+            if not config:
+                return False
+
+            config.is_deleted = True
+            await self.session.commit()
+            logger.info(f"Deleted backtest config: {config_id}")
+            return True
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Failed to delete config {config_id}: {str(e)}", exc_info=True)
+            raise BacktestError(f"Failed to delete backtest configuration: {str(e)}") from e
 
     # ==================== BacktestResult Operations ====================
 
@@ -195,12 +227,21 @@ class BacktestRepository:
 
         Returns:
             Created BacktestResult instance
+
+        Raises:
+            BacktestError: If database operation fails
         """
-        result = BacktestResult(**result_data)
-        self.session.add(result)
-        await self.session.commit()
-        await self.session.refresh(result)
-        return result
+        try:
+            result = BacktestResult(**result_data)
+            self.session.add(result)
+            await self.session.commit()
+            await self.session.refresh(result)
+            logger.info(f"Created backtest result: {result.id}")
+            return result
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Failed to create result: {str(e)}", exc_info=True)
+            raise BacktestError(f"Failed to create backtest result: {str(e)}") from e
 
     async def get_result_by_id(self, result_id: str) -> Optional[BacktestResult]:
         """
@@ -273,15 +314,24 @@ class BacktestRepository:
 
         Returns:
             Updated BacktestResult instance or None if not found
-        """
-        result = await self.get_result_by_id(result_id)
-        if not result:
-            return None
 
-        result.status = status
-        await self.session.commit()
-        await self.session.refresh(result)
-        return result
+        Raises:
+            BacktestError: If database operation fails
+        """
+        try:
+            result = await self.get_result_by_id(result_id)
+            if not result:
+                return None
+
+            result.status = status
+            await self.session.commit()
+            await self.session.refresh(result)
+            logger.info(f"Updated result status: {result_id} -> {status}")
+            return result
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Failed to update result status {result_id}: {str(e)}", exc_info=True)
+            raise BacktestError(f"Failed to update backtest result status: {str(e)}") from e
 
     async def update_result(
         self,
@@ -297,18 +347,27 @@ class BacktestRepository:
 
         Returns:
             Updated BacktestResult instance or None if not found
+
+        Raises:
+            BacktestError: If database operation fails
         """
-        result = await self.get_result_by_id(result_id)
-        if not result:
-            return None
+        try:
+            result = await self.get_result_by_id(result_id)
+            if not result:
+                return None
 
-        for key, value in update_data.items():
-            if hasattr(result, key):
-                setattr(result, key, value)
+            for key, value in update_data.items():
+                if hasattr(result, key):
+                    setattr(result, key, value)
 
-        await self.session.commit()
-        await self.session.refresh(result)
-        return result
+            await self.session.commit()
+            await self.session.refresh(result)
+            logger.info(f"Updated backtest result: {result_id}")
+            return result
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Failed to update result {result_id}: {str(e)}", exc_info=True)
+            raise BacktestError(f"Failed to update backtest result: {str(e)}") from e
 
     async def delete_result(self, result_id: str) -> bool:
         """
@@ -319,14 +378,23 @@ class BacktestRepository:
 
         Returns:
             True if deleted, False if not found
-        """
-        result = await self.get_result_by_id(result_id)
-        if not result:
-            return False
 
-        result.is_deleted = True
-        await self.session.commit()
-        return True
+        Raises:
+            BacktestError: If database operation fails
+        """
+        try:
+            result = await self.get_result_by_id(result_id)
+            if not result:
+                return False
+
+            result.is_deleted = True
+            await self.session.commit()
+            logger.info(f"Deleted backtest result: {result_id}")
+            return True
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Failed to delete result {result_id}: {str(e)}", exc_info=True)
+            raise BacktestError(f"Failed to delete backtest result: {str(e)}") from e
 
     # ==================== Query Operations ====================
 
