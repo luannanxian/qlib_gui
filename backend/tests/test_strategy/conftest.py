@@ -46,7 +46,6 @@ async def test_engine():
         TEST_DATABASE_URL,
         echo=False,
         poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
     )
 
     # Create all tables
