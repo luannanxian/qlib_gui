@@ -1,0 +1,1602 @@
+openapi: 3.1.0
+info:
+  title: Strategy Builder API
+  version: 1.0.0
+  description: |
+    RESTful API for visual strategy building with drag-and-drop logic flow editor.
+
+    ## Features
+    - Node template library (system and custom templates)
+    - Logic flow validation and manipulation
+    - Python code generation from visual flows
+    - Quick backtest execution
+    - Session management with auto-save
+    - Integration with Indicator and Backtest modules
+
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token in Authorization header.
+
+  contact:
+    name: Qlib-UI Development Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.qlib-ui.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: node-templates
+    description: Node template management (system and custom templates)
+  - name: factors
+    description: Factor library integration with Indicator module
+  - name: code-generation
+    description: Logic flow to Python code conversion
+  - name: quick-test
+    description: Lightweight backtest execution
+  - name: sessions
+    description: Builder session and auto-save management
+
+paths:
+  # ==================== Node Templates ====================
+  /api/strategy-builder/node-templates:
+    get:
+      tags: [node-templates]
+      summary: List node templates
+      description: |
+        Retrieve all available node templates with optional filtering by type and category.
+        Returns both system templates and user's custom templates.
+      operationId: listNodeTemplates
+      parameters:
+        - name: node_type
+          in: query
+          description: Filter by node type (INDICATOR, CONDITION, SIGNAL, etc.)
+          required: false
+          schema:
+            $ref: '#/components/schemas/NodeTypeCategory'
+        - name: category
+          in: query
+          description: Filter by sub-category (e.g., TREND, MOMENTUM)
+          required: false
+          schema:
+            type: string
+            example: TREND
+        - name: is_system_template
+          in: query
+          description: Filter by system/custom templates (true=system, false=custom)
+          required: false
+          schema:
+            type: boolean
+        - name: skip
+          in: query
+          description: Number of records to skip (pagination offset)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          description: Maximum number of records to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Successful response with node template list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required: [items, total, page, page_size]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NodeTemplateResponse'
+                      total:
+                        type: integer
+                        description: Total number of templates matching filters
+                        example: 45
+                      page:
+                        type: integer
+                        example: 1
+                      page_size:
+                        type: integer
+                        example: 20
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [node-templates]
+      summary: Create custom node template
+      description: |
+        Create a user-defined custom node template with parameter schema and port definitions.
+        Only authenticated users can create custom templates.
+      operationId: createNodeTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeTemplateCreate'
+      responses:
+        '201':
+          description: Template created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/NodeTemplateResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/strategy-builder/node-templates/{template_id}:
+    get:
+      tags: [node-templates]
+      summary: Get node template details
+      description: Retrieve detailed information about a specific node template
+      operationId: getNodeTemplate
+      parameters:
+        - $ref: '#/components/parameters/TemplateId'
+      responses:
+        '200':
+          description: Successful response with template details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/NodeTemplateResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [node-templates]
+      summary: Update custom node template
+      description: |
+        Update a custom node template. Only the owner can update custom templates.
+        System templates cannot be updated.
+      operationId: updateNodeTemplate
+      parameters:
+        - $ref: '#/components/parameters/TemplateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeTemplateUpdate'
+      responses:
+        '200':
+          description: Template updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/NodeTemplateResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== Factors Integration ====================
+  /api/strategy-builder/factors:
+    get:
+      tags: [factors]
+      summary: Get available factors
+      description: |
+        Retrieve factor list from Indicator module for use in INDICATOR nodes.
+        Returns published factors that can be used in strategy logic flows.
+      operationId: getAvailableFactors
+      parameters:
+        - name: category
+          in: query
+          description: Filter by factor category
+          required: false
+          schema:
+            type: string
+            example: TECHNICAL
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Successful response with factor list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required: [items, total]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/FactorReference'
+                      total:
+                        type: integer
+                        example: 128
+                  timestamp:
+                    type: string
+                    format: date-time
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== Code Generation ====================
+  /api/strategy-builder/generate-code:
+    post:
+      tags: [code-generation]
+      summary: Generate Python code from logic flow
+      description: |
+        Convert visual logic flow JSON to executable Python code.
+
+        ## Process
+        1. Validate logic flow completeness
+        2. Topological sort of nodes
+        3. Generate code using Jinja2 templates
+        4. Perform syntax and security checks
+        5. Calculate code hash for deduplication
+        6. Store generation history
+
+        ## Code Generation Rules
+        - INDICATOR nodes → Factor expressions
+        - CONDITION nodes → Boolean conditions
+        - SIGNAL nodes → Trading signals (BUY/SELL)
+        - POSITION nodes → Position sizing logic
+        - STOP_LOSS/STOP_PROFIT → Risk management rules
+      operationId: generateCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeGenerationRequest'
+      responses:
+        '200':
+          description: Code generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CodeGenerationResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: Logic flow validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: LOGIC_FLOW_INVALID
+                  message: Logic flow validation failed
+                  details:
+                    - field: nodes
+                      message: Detected circular dependency in node connections
+                      code: CIRCULAR_DEPENDENCY
+                timestamp: "2025-01-15T10:30:00Z"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/strategy-builder/validate-code:
+    post:
+      tags: [code-generation]
+      summary: Validate code security
+      description: |
+        Perform comprehensive security validation on generated or user-provided code.
+
+        ## Validation Checks
+        1. **Syntax Validation**: Python AST parsing
+        2. **Security Scan**: Detect dangerous imports/calls (os, sys, subprocess, eval, exec)
+        3. **Import Whitelist**: Verify all imports are allowed (numpy, pandas, qlib, talib)
+        4. **Complexity Analysis**: Calculate cyclomatic complexity
+        5. **Resource Estimation**: Estimate memory/CPU requirements
+
+        ## Security Rules
+        - Forbidden: File I/O, network access, subprocess execution
+        - Allowed: numpy, pandas, qlib, talib, math, datetime
+        - No dynamic code execution (eval, exec, compile, __import__)
+      operationId: validateCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeValidationRequest'
+      responses:
+        '200':
+          description: Validation completed (may contain warnings/errors)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CodeValidationResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/strategy-builder/code-history/{instance_id}:
+    get:
+      tags: [code-generation]
+      summary: Get code generation history
+      description: |
+        Retrieve code generation history for a strategy instance.
+        Returns chronological list of all code generations with validation status.
+      operationId: getCodeHistory
+      parameters:
+        - name: instance_id
+          in: path
+          required: true
+          description: Strategy instance ID
+          schema:
+            type: string
+            format: uuid
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Successful response with code generation history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required: [items, total]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CodeGenerationHistoryItem'
+                      total:
+                        type: integer
+                        example: 15
+                  timestamp:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== Quick Test ====================
+  /api/strategy-builder/quick-test:
+    post:
+      tags: [quick-test]
+      summary: Execute quick backtest
+      description: |
+        Execute lightweight backtest for rapid strategy validation.
+
+        ## Quick Test Features
+        - Simplified configuration (preset date ranges, stock pools)
+        - Fast execution (< 30 seconds for typical cases)
+        - Key performance metrics only
+        - Asynchronous execution with status polling
+
+        ## Integration with Backtest Module
+        Uses BacktestExecutionService with simplified configuration:
+        - Pre-selected stock universe (e.g., CSI300)
+        - Standard time periods (1Y, 3M, 6M)
+        - Fixed initial capital (100,000 CNY)
+        - Basic transaction costs
+
+        ## Execution Flow
+        1. Create QuickTest record (status=PENDING)
+        2. Submit to background task queue
+        3. Return test_id immediately
+        4. Client polls /quick-test/{test_id} for results
+      operationId: executeQuickTest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuickTestRequest'
+      responses:
+        '202':
+          description: Quick test accepted and queued for execution
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required: [test_id, status, message]
+                    properties:
+                      test_id:
+                        type: string
+                        format: uuid
+                        example: "qt_a1b2c3d4"
+                      status:
+                        $ref: '#/components/schemas/QuickTestStatus'
+                      message:
+                        type: string
+                        example: "Quick test queued for execution"
+                      estimated_duration:
+                        type: integer
+                        description: Estimated duration in seconds
+                        example: 25
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/strategy-builder/quick-test/{test_id}:
+    get:
+      tags: [quick-test]
+      summary: Get quick test result
+      description: |
+        Retrieve quick test execution status and results.
+
+        ## Status Lifecycle
+        PENDING → RUNNING → COMPLETED/FAILED/CANCELLED
+
+        ## Result Contents
+        - Performance metrics (returns, sharpe, max_drawdown, win_rate)
+        - Equity curve (simplified)
+        - Trade summary (count, win/loss)
+        - Execution time and error messages (if failed)
+      operationId: getQuickTestResult
+      parameters:
+        - name: test_id
+          in: path
+          required: true
+          description: Quick test ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response with test result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/QuickTestResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/strategy-builder/quick-test/history:
+    get:
+      tags: [quick-test]
+      summary: Get quick test history
+      description: |
+        Retrieve historical quick tests for the current user or specific strategy instance.
+      operationId: getQuickTestHistory
+      parameters:
+        - name: instance_id
+          in: query
+          description: Filter by strategy instance ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter by test status
+          required: false
+          schema:
+            $ref: '#/components/schemas/QuickTestStatus'
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Successful response with test history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required: [items, total]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/QuickTestSummary'
+                      total:
+                        type: integer
+                        example: 42
+                  timestamp:
+                    type: string
+                    format: date-time
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== Session Management ====================
+  /api/strategy-builder/sessions:
+    post:
+      tags: [sessions]
+      summary: Create or update builder session
+      description: |
+        Create new session or update existing session with draft logic flow.
+
+        ## Session Auto-Save Behavior
+        - **Create**: If no session exists for instance_id, create new session
+        - **Update**: If session exists, update draft_logic_flow and last_activity_at
+        - Auto-save interval: Client sends every 30 seconds of user activity
+        - Session expiration: 24 hours of inactivity (configurable)
+
+        ## Session Types
+        - **DRAFT**: Work-in-progress, not committed to StrategyInstance
+        - **AUTOSAVE**: Auto-saved draft during editing
+        - **COLLABORATIVE**: (Future) Multi-user collaborative editing
+
+        ## Use Cases
+        1. User starts building strategy → Create session
+        2. User drags nodes → Auto-save every 30s
+        3. User saves strategy → Commit to StrategyInstance, delete session
+        4. User closes browser → Session persists for 24h
+        5. User re-opens → Restore from session
+      operationId: createOrUpdateSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionUpsertRequest'
+      responses:
+        '200':
+          description: Session created or updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SessionResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/strategy-builder/sessions/{session_id}:
+    get:
+      tags: [sessions]
+      summary: Get builder session
+      description: |
+        Retrieve builder session with draft logic flow and parameters.
+        Used for restoring user's work when re-opening strategy builder.
+      operationId: getSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Session ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response with session data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SessionResponse'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [sessions]
+      summary: Delete builder session
+      description: |
+        Delete builder session (soft delete).
+        Called when user commits strategy to StrategyInstance or explicitly discards draft.
+      operationId: deleteSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Session ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, timestamp]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required: [message]
+                    properties:
+                      message:
+                        type: string
+                        example: "Session deleted successfully"
+                  timestamp:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# ==================== Components ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication endpoint
+
+  parameters:
+    TemplateId:
+      name: template_id
+      in: path
+      required: true
+      description: Node template ID
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    # ==================== Enums ====================
+    NodeTypeCategory:
+      type: string
+      enum:
+        - INDICATOR
+        - CONDITION
+        - SIGNAL
+        - POSITION
+        - STOP_LOSS
+        - STOP_PROFIT
+        - RISK_MANAGEMENT
+        - CUSTOM
+      description: Node template categories for logic flow builder
+
+    QuickTestStatus:
+      type: string
+      enum:
+        - PENDING
+        - RUNNING
+        - COMPLETED
+        - FAILED
+        - CANCELLED
+      description: Quick test execution status
+
+    ValidationStatus:
+      type: string
+      enum:
+        - PENDING
+        - VALID
+        - SYNTAX_ERROR
+        - SECURITY_ERROR
+        - RUNTIME_ERROR
+      description: Code validation status
+
+    SessionType:
+      type: string
+      enum:
+        - DRAFT
+        - AUTOSAVE
+        - COLLABORATIVE
+      description: Builder session types
+
+    # ==================== Node Template Schemas ====================
+    NodeTemplateResponse:
+      type: object
+      required:
+        - id
+        - name
+        - display_name
+        - node_type
+        - parameter_schema
+        - default_parameters
+        - input_ports
+        - output_ports
+        - is_system_template
+        - version
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "tpl_ma_crossover"
+        name:
+          type: string
+          example: "ma_crossover"
+          description: Unique identifier name
+        display_name:
+          type: string
+          example: "Moving Average Crossover"
+          description: UI display name
+        description:
+          type: string
+          nullable: true
+          example: "Generates buy/sell signals based on MA crossover"
+        node_type:
+          $ref: '#/components/schemas/NodeTypeCategory'
+        category:
+          type: string
+          nullable: true
+          example: "TREND"
+          description: Sub-category for organization
+        parameter_schema:
+          type: object
+          description: JSON Schema for parameter validation
+          example:
+            type: object
+            properties:
+              short_period:
+                type: integer
+                minimum: 1
+                maximum: 100
+                default: 5
+              long_period:
+                type: integer
+                minimum: 1
+                maximum: 200
+                default: 20
+            required: [short_period, long_period]
+        default_parameters:
+          type: object
+          example:
+            short_period: 5
+            long_period: 20
+        input_ports:
+          type: array
+          items:
+            type: object
+            required: [name, type, required]
+            properties:
+              name:
+                type: string
+                example: "price_data"
+              type:
+                type: string
+                example: "TIMESERIES"
+              required:
+                type: boolean
+                example: true
+        output_ports:
+          type: array
+          items:
+            type: object
+            required: [name, type]
+            properties:
+              name:
+                type: string
+                example: "signal"
+              type:
+                type: string
+                example: "SIGNAL"
+        is_system_template:
+          type: boolean
+          example: true
+        user_id:
+          type: string
+          nullable: true
+          description: User ID for custom templates (null for system templates)
+        usage_count:
+          type: integer
+          example: 1250
+        icon:
+          type: string
+          nullable: true
+          example: "chart-line"
+        color:
+          type: string
+          nullable: true
+          example: "#4CAF50"
+        version:
+          type: string
+          example: "1.0.0"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NodeTemplateCreate:
+      type: object
+      required:
+        - name
+        - display_name
+        - node_type
+        - parameter_schema
+        - default_parameters
+        - input_ports
+        - output_ports
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-z][a-z0-9_]*$'
+          example: "custom_rsi_signal"
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Custom RSI Signal"
+        description:
+          type: string
+          maxLength: 5000
+        node_type:
+          $ref: '#/components/schemas/NodeTypeCategory'
+        category:
+          type: string
+          maxLength: 100
+        parameter_schema:
+          type: object
+        default_parameters:
+          type: object
+        input_ports:
+          type: array
+          items:
+            type: object
+        output_ports:
+          type: array
+          items:
+            type: object
+        validation_rules:
+          type: object
+          nullable: true
+        execution_hints:
+          type: object
+          nullable: true
+        icon:
+          type: string
+          maxLength: 100
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          example: "#FF5722"
+
+    NodeTemplateUpdate:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 5000
+        parameter_schema:
+          type: object
+        default_parameters:
+          type: object
+        input_ports:
+          type: array
+        output_ports:
+          type: array
+        validation_rules:
+          type: object
+        execution_hints:
+          type: object
+        icon:
+          type: string
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+
+    # ==================== Factor Integration ====================
+    FactorReference:
+      type: object
+      required:
+        - id
+        - name
+        - display_name
+        - category
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "RSI_14"
+        display_name:
+          type: string
+          example: "Relative Strength Index (14 days)"
+        description:
+          type: string
+        category:
+          type: string
+          example: "MOMENTUM"
+        parameters:
+          type: object
+          description: Available parameters for this factor
+        output_type:
+          type: string
+          example: "FLOAT"
+
+    # ==================== Code Generation ====================
+    CodeGenerationRequest:
+      type: object
+      required:
+        - instance_id
+        - logic_flow
+        - parameters
+      properties:
+        instance_id:
+          type: string
+          format: uuid
+          description: Strategy instance ID
+        logic_flow:
+          type: object
+          description: Logic flow JSON structure
+          required: [nodes, edges]
+          properties:
+            nodes:
+              type: array
+              items:
+                type: object
+                required: [id, type, template_id]
+            edges:
+              type: array
+              items:
+                type: object
+                required: [id, source, target]
+        parameters:
+          type: object
+          description: Parameter values for nodes
+
+    CodeGenerationResponse:
+      type: object
+      required:
+        - generation_id
+        - generated_code
+        - code_hash
+        - validation_status
+        - line_count
+        - generation_time
+      properties:
+        generation_id:
+          type: string
+          format: uuid
+        generated_code:
+          type: string
+          description: Generated Python code
+        code_hash:
+          type: string
+          description: SHA-256 hash of generated code
+          example: "a1b2c3d4..."
+        validation_status:
+          $ref: '#/components/schemas/ValidationStatus'
+        validation_result:
+          type: object
+          nullable: true
+        syntax_check_passed:
+          type: boolean
+        security_check_passed:
+          type: boolean
+        line_count:
+          type: integer
+          example: 145
+        complexity_score:
+          type: integer
+          nullable: true
+          example: 8
+        generation_time:
+          type: number
+          format: float
+          description: Generation time in seconds
+          example: 0.253
+
+    CodeValidationRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          description: Python code to validate
+        strict_mode:
+          type: boolean
+          default: true
+          description: Enable strict security checks
+
+    CodeValidationResponse:
+      type: object
+      required:
+        - is_valid
+        - validation_status
+        - checks
+      properties:
+        is_valid:
+          type: boolean
+          description: Overall validation result
+        validation_status:
+          $ref: '#/components/schemas/ValidationStatus'
+        checks:
+          type: object
+          required: [syntax, security, imports, complexity]
+          properties:
+            syntax:
+              type: object
+              required: [passed, errors]
+              properties:
+                passed:
+                  type: boolean
+                errors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      line:
+                        type: integer
+                      message:
+                        type: string
+            security:
+              type: object
+              required: [passed, violations]
+              properties:
+                passed:
+                  type: boolean
+                violations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      severity:
+                        type: string
+                        enum: [LOW, MEDIUM, HIGH, CRITICAL]
+                      line:
+                        type: integer
+                      code:
+                        type: string
+                      message:
+                        type: string
+            imports:
+              type: object
+              required: [allowed, forbidden]
+              properties:
+                allowed:
+                  type: array
+                  items:
+                    type: string
+                forbidden:
+                  type: array
+                  items:
+                    type: string
+            complexity:
+              type: object
+              properties:
+                cyclomatic_complexity:
+                  type: integer
+                cognitive_complexity:
+                  type: integer
+                max_nesting_depth:
+                  type: integer
+
+    CodeGenerationHistoryItem:
+      type: object
+      required:
+        - id
+        - code_hash
+        - validation_status
+        - line_count
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        code_hash:
+          type: string
+        validation_status:
+          $ref: '#/components/schemas/ValidationStatus'
+        syntax_check_passed:
+          type: boolean
+          nullable: true
+        security_check_passed:
+          type: boolean
+          nullable: true
+        line_count:
+          type: integer
+        complexity_score:
+          type: integer
+          nullable: true
+        generation_time:
+          type: number
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    # ==================== Quick Test ====================
+    QuickTestRequest:
+      type: object
+      required:
+        - instance_id
+      properties:
+        instance_id:
+          type: string
+          format: uuid
+          description: Strategy instance ID to test
+        test_name:
+          type: string
+          maxLength: 255
+          description: Optional test name
+        test_config:
+          type: object
+          description: Test configuration (date range, stock pool, etc.)
+          properties:
+            date_range:
+              type: string
+              enum: [1M, 3M, 6M, 1Y]
+              default: 3M
+            stock_pool:
+              type: string
+              enum: [CSI300, CSI500, CSI800, ALL_A_SHARES]
+              default: CSI300
+            initial_capital:
+              type: number
+              format: float
+              default: 100000
+              minimum: 10000
+              maximum: 10000000
+
+    QuickTestResponse:
+      type: object
+      required:
+        - id
+        - instance_id
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        instance_id:
+          type: string
+          format: uuid
+        test_name:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/QuickTestStatus'
+        test_config:
+          type: object
+        metrics_summary:
+          type: object
+          nullable: true
+          properties:
+            total_return:
+              type: number
+              format: float
+            annual_return:
+              type: number
+              format: float
+            sharpe_ratio:
+              type: number
+              format: float
+            max_drawdown:
+              type: number
+              format: float
+            win_rate:
+              type: number
+              format: float
+        error_message:
+          type: string
+          nullable: true
+        execution_time:
+          type: number
+          format: float
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    QuickTestSummary:
+      type: object
+      required:
+        - id
+        - instance_id
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        instance_id:
+          type: string
+          format: uuid
+        test_name:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/QuickTestStatus'
+        metrics_summary:
+          type: object
+          nullable: true
+          properties:
+            total_return:
+              type: number
+            sharpe_ratio:
+              type: number
+        execution_time:
+          type: number
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    # ==================== Session Management ====================
+    SessionUpsertRequest:
+      type: object
+      required:
+        - draft_logic_flow
+        - draft_parameters
+      properties:
+        instance_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Strategy instance ID (null for new unsaved strategies)
+        session_name:
+          type: string
+          maxLength: 255
+          nullable: true
+        session_type:
+          $ref: '#/components/schemas/SessionType'
+        draft_logic_flow:
+          type: object
+          description: Draft logic flow JSON
+        draft_parameters:
+          type: object
+          description: Draft parameter values
+        draft_metadata:
+          type: object
+          nullable: true
+          description: UI metadata (cursor position, zoom level, etc.)
+
+    SessionResponse:
+      type: object
+      required:
+        - id
+        - user_id
+        - session_type
+        - draft_logic_flow
+        - draft_parameters
+        - is_active
+        - last_activity_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        instance_id:
+          type: string
+          format: uuid
+          nullable: true
+        user_id:
+          type: string
+        session_type:
+          $ref: '#/components/schemas/SessionType'
+        session_name:
+          type: string
+          nullable: true
+        draft_logic_flow:
+          type: object
+        draft_parameters:
+          type: object
+        draft_metadata:
+          type: object
+          nullable: true
+        is_active:
+          type: boolean
+        last_activity_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== Error Schemas ====================
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+        - timestamp
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Invalid input data"
+            details:
+              type: array
+              nullable: true
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+                  code:
+                    type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Invalid input parameters"
+              details:
+                - field: "parameter_schema"
+                  message: "Must be a valid JSON Schema object"
+                  code: "INVALID_FORMAT"
+            timestamp: "2025-01-15T10:30:00Z"
+
+    Unauthorized:
+      description: Unauthorized - Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "UNAUTHORIZED"
+              message: "Missing or invalid authentication token"
+            timestamp: "2025-01-15T10:30:00Z"
+
+    Forbidden:
+      description: Forbidden - User does not have permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "FORBIDDEN"
+              message: "You do not have permission to modify system templates"
+            timestamp: "2025-01-15T10:30:00Z"
+
+    NotFound:
+      description: Not found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "RESOURCE_NOT_FOUND"
+              message: "Node template not found"
+            timestamp: "2025-01-15T10:30:00Z"
+
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "DUPLICATE_ENTRY"
+              message: "A node template with this name already exists"
+            timestamp: "2025-01-15T10:30:00Z"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An unexpected error occurred"
+            timestamp: "2025-01-15T10:30:00Z"

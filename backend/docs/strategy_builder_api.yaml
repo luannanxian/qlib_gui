@@ -1,0 +1,842 @@
+openapi: 3.1.0
+info:
+  title: Strategy Builder API Extension
+  description: |
+    API extensions for Strategy Builder functionality.
+    Extends the existing Strategy module with visual builder capabilities.
+  version: 1.0.0
+  contact:
+    name: qlib-ui Team
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+tags:
+  - name: Builder Components
+    description: Component library and factor integration
+  - name: Code Generation
+    description: Strategy code generation and validation
+  - name: Quick Testing
+    description: Fast backtesting integration
+  - name: Templates
+    description: Enhanced template operations
+
+paths:
+  # ========================================
+  # Builder Components - Factor Integration
+  # ========================================
+
+  /api/builder/factors:
+    get:
+      tags:
+        - Builder Components
+      summary: List available factors
+      description: |
+        Get list of available factors/indicators from Indicator module.
+        Used to populate factor selector in visual builder.
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [trend, momentum, volatility, volume, custom]
+          description: Filter by indicator category
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or code
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: List of factors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FactorComponent'
+                  skip:
+                    type: integer
+                  limit:
+                    type: integer
+
+  /api/builder/factors/{factor_id}:
+    get:
+      tags:
+        - Builder Components
+      summary: Get factor details
+      description: Get detailed information about a specific factor including parameters
+      parameters:
+        - name: factor_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Factor details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FactorComponent'
+        '404':
+          description: Factor not found
+
+  /api/builder/node-templates:
+    get:
+      tags:
+        - Builder Components
+      summary: Get node templates
+      description: |
+        Get pre-configured node templates for common patterns.
+        Used to populate node library in visual builder.
+      parameters:
+        - name: node_type
+          in: query
+          schema:
+            type: string
+            enum: [INDICATOR, CONDITION, SIGNAL, POSITION, STOP_LOSS, STOP_PROFIT]
+          description: Filter by node type
+      responses:
+        '200':
+          description: List of node templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NodeTemplate'
+
+  # ========================================
+  # Code Generation
+  # ========================================
+
+  /api/builder/strategies/{strategy_id}/generate-code:
+    post:
+      tags:
+        - Code Generation
+      summary: Generate strategy code
+      description: |
+        Generate executable Python code from strategy Logic Flow.
+        Returns Qlib-compatible strategy code.
+      parameters:
+        - name: strategy_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format:
+                  type: string
+                  enum: [qlib, alphalens, custom]
+                  default: qlib
+                  description: Output format
+                include_comments:
+                  type: boolean
+                  default: true
+                  description: Include code comments
+                validation_level:
+                  type: string
+                  enum: [basic, strict]
+                  default: strict
+      responses:
+        '200':
+          description: Generated code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedCode'
+        '400':
+          description: Invalid strategy or generation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeGenerationError'
+        '404':
+          description: Strategy not found
+
+  /api/builder/validate-code:
+    post:
+      tags:
+        - Code Generation
+      summary: Validate strategy code
+      description: |
+        Validate generated or custom strategy code.
+        Checks syntax, imports, and Qlib compatibility.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Python code to validate
+                validation_rules:
+                  type: array
+                  items:
+                    type: string
+                  description: Specific validation rules to apply
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeValidationResult'
+
+  /api/builder/preview-logic:
+    post:
+      tags:
+        - Code Generation
+      summary: Preview logic execution
+      description: |
+        Preview how the logic flow will execute with sample data.
+        Returns step-by-step execution trace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - logic_flow
+              properties:
+                logic_flow:
+                  $ref: '#/components/schemas/LogicFlow'
+                sample_data:
+                  type: object
+                  description: Optional sample market data
+      responses:
+        '200':
+          description: Execution preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogicPreview'
+
+  # ========================================
+  # Quick Testing
+  # ========================================
+
+  /api/builder/strategies/{strategy_id}/quick-test:
+    post:
+      tags:
+        - Quick Testing
+      summary: Run quick backtest
+      description: |
+        Run a fast backtest on strategy with minimal configuration.
+        Uses default parameters and limited date range.
+      parameters:
+        - name: strategy_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                start_date:
+                  type: string
+                  format: date
+                  description: Start date (default: 3 months ago)
+                end_date:
+                  type: string
+                  format: date
+                  description: End date (default: today)
+                benchmark:
+                  type: string
+                  default: SH000300
+                  description: Benchmark symbol
+      responses:
+        '202':
+          description: Test started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_id:
+                    type: string
+                    description: Backtest task ID
+                  status:
+                    type: string
+                    enum: [pending, running]
+                  message:
+                    type: string
+        '400':
+          description: Invalid strategy or parameters
+        '404':
+          description: Strategy not found
+
+  /api/builder/quick-tests/{task_id}:
+    get:
+      tags:
+        - Quick Testing
+      summary: Get quick test results
+      description: Get results of a quick backtest task
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuickTestResult'
+        '404':
+          description: Task not found
+
+  # ========================================
+  # Enhanced Template Operations
+  # ========================================
+
+  /api/builder/templates/{template_id}/clone:
+    post:
+      tags:
+        - Templates
+      summary: Clone and customize template
+      description: |
+        Clone a template and open it in builder for customization.
+        Returns a draft strategy instance.
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Name for new strategy
+                description:
+                  type: string
+                  description: Optional description
+                parameters:
+                  type: object
+                  description: Parameter overrides
+      responses:
+        '201':
+          description: Strategy created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyInstance'
+        '404':
+          description: Template not found
+
+  /api/builder/strategies/{strategy_id}/export:
+    get:
+      tags:
+        - Templates
+      summary: Export strategy
+      description: Export strategy as JSON for sharing or backup
+      parameters:
+        - name: strategy_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, yaml]
+            default: json
+      responses:
+        '200':
+          description: Exported strategy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyExport'
+        '404':
+          description: Strategy not found
+
+  /api/builder/strategies/import:
+    post:
+      tags:
+        - Templates
+      summary: Import strategy
+      description: Import strategy from JSON/YAML file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StrategyImport'
+      responses:
+        '201':
+          description: Strategy imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyInstance'
+        '400':
+          description: Invalid import data
+
+# ========================================
+# Component Schemas
+# ========================================
+
+components:
+  schemas:
+    FactorComponent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Factor code (e.g., SMA, RSI)
+        name:
+          type: string
+          description: Display name
+        category:
+          type: string
+          enum: [trend, momentum, volatility, volume, custom]
+        source:
+          type: string
+          enum: [talib, qlib, custom]
+        description:
+          type: string
+        formula:
+          type: string
+          description: Calculation formula
+        parameters:
+          type: object
+          description: Parameter definitions
+          additionalProperties:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [int, float, string, boolean]
+              min:
+                type: number
+              max:
+                type: number
+              default:
+                oneOf:
+                  - type: number
+                  - type: string
+                  - type: boolean
+              options:
+                type: array
+                items: {}
+        default_params:
+          type: object
+          description: Default parameter values
+        usage_count:
+          type: integer
+          minimum: 0
+        is_enabled:
+          type: boolean
+      required:
+        - id
+        - code
+        - name
+        - category
+
+    NodeTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        node_type:
+          type: string
+          enum: [INDICATOR, CONDITION, SIGNAL, POSITION, STOP_LOSS, STOP_PROFIT]
+        default_config:
+          type: object
+          description: Pre-configured node data
+        icon:
+          type: string
+          description: Icon identifier
+        category:
+          type: string
+          description: Template category
+      required:
+        - id
+        - name
+        - node_type
+
+    LogicFlow:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogicNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogicEdge'
+      required:
+        - nodes
+        - edges
+
+    LogicNode:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [INDICATOR, CONDITION, SIGNAL, POSITION, STOP_LOSS, STOP_PROFIT]
+        label:
+          type: string
+        indicator:
+          type: string
+          description: For INDICATOR nodes
+        parameters:
+          type: object
+        condition:
+          type: string
+          description: For CONDITION nodes
+        signal_type:
+          type: string
+          enum: [BUY, SELL]
+          description: For SIGNAL nodes
+        position_type:
+          type: string
+          enum: [FIXED, DYNAMIC]
+        position_value:
+          type: number
+          minimum: 0
+          maximum: 100
+        stop_loss_type:
+          type: string
+          enum: [PERCENTAGE, MA_BASED, FIXED_AMOUNT]
+        stop_loss_value:
+          type: number
+      required:
+        - id
+        - type
+
+    LogicEdge:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        label:
+          type: string
+      required:
+        - from
+        - to
+
+    GeneratedCode:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Generated Python code
+        language:
+          type: string
+          default: python
+        format:
+          type: string
+          enum: [qlib, alphalens, custom]
+        imports:
+          type: array
+          items:
+            type: string
+          description: Required imports
+        class_name:
+          type: string
+          description: Generated strategy class name
+        metadata:
+          type: object
+          properties:
+            generated_at:
+              type: string
+              format: date-time
+            strategy_id:
+              type: string
+            node_count:
+              type: integer
+            warnings:
+              type: array
+              items:
+                type: string
+      required:
+        - code
+        - format
+
+    CodeGenerationError:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+        node_id:
+          type: string
+          description: Node where error occurred
+        suggestions:
+          type: array
+          items:
+            type: string
+      required:
+        - error
+
+    CodeValidationResult:
+      type: object
+      properties:
+        is_valid:
+          type: boolean
+        syntax_errors:
+          type: array
+          items:
+            type: object
+            properties:
+              line:
+                type: integer
+              column:
+                type: integer
+              message:
+                type: string
+              severity:
+                type: string
+                enum: [error, warning, info]
+        import_errors:
+          type: array
+          items:
+            type: string
+        security_issues:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              message:
+                type: string
+              severity:
+                type: string
+                enum: [high, medium, low]
+        suggestions:
+          type: array
+          items:
+            type: string
+      required:
+        - is_valid
+
+    LogicPreview:
+      type: object
+      properties:
+        execution_trace:
+          type: array
+          items:
+            type: object
+            properties:
+              step:
+                type: integer
+              node_id:
+                type: string
+              node_type:
+                type: string
+              input:
+                type: object
+              output:
+                type: object
+              status:
+                type: string
+                enum: [success, error, skipped]
+              message:
+                type: string
+        final_signals:
+          type: object
+          properties:
+            buy_signals:
+              type: array
+              items:
+                type: object
+            sell_signals:
+              type: array
+              items:
+                type: object
+        warnings:
+          type: array
+          items:
+            type: string
+      required:
+        - execution_trace
+
+    QuickTestResult:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        results:
+          type: object
+          properties:
+            metrics:
+              type: object
+              properties:
+                total_return:
+                  type: number
+                sharpe_ratio:
+                  type: number
+                max_drawdown:
+                  type: number
+                win_rate:
+                  type: number
+            chart_data:
+              type: object
+              description: Chart data for visualization
+            trade_summary:
+              type: object
+              properties:
+                total_trades:
+                  type: integer
+                winning_trades:
+                  type: integer
+                losing_trades:
+                  type: integer
+        error:
+          type: string
+          description: Error message if failed
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+      required:
+        - task_id
+        - status
+
+    StrategyInstance:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        template_id:
+          type: string
+          nullable: true
+        user_id:
+          type: string
+        logic_flow:
+          $ref: '#/components/schemas/LogicFlow'
+        parameters:
+          type: object
+        status:
+          type: string
+          enum: [DRAFT, TESTING, ACTIVE, ARCHIVED]
+        version:
+          type: integer
+        parent_version_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - user_id
+        - logic_flow
+        - status
+
+    StrategyExport:
+      type: object
+      properties:
+        version:
+          type: string
+          description: Export format version
+        strategy:
+          $ref: '#/components/schemas/StrategyInstance'
+        metadata:
+          type: object
+          properties:
+            exported_at:
+              type: string
+              format: date-time
+            exported_by:
+              type: string
+        template_info:
+          type: object
+          description: Referenced template info (if applicable)
+      required:
+        - version
+        - strategy
+
+    StrategyImport:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/StrategyExport'
+        name:
+          type: string
+          description: Name for imported strategy (overrides export)
+        validate_only:
+          type: boolean
+          default: false
+          description: Only validate, don't import
+      required:
+        - data
