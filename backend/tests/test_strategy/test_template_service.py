@@ -391,3 +391,130 @@ class TestRatingStatisticsEdgeCases:
         await db_session.refresh(template)
         assert template.rating_count == 3
         assert float(template.rating_average) == 4.0
+
+
+class TestToggleFavorite:
+    """Test toggle_favorite method"""
+
+    async def test_toggle_favorite_not_implemented(
+        self, template_service: TemplateService, sample_templates
+    ):
+        """Should raise NotImplementedError"""
+        # Act & Assert
+        with pytest.raises(NotImplementedError, match="Favorite functionality"):
+            await template_service.toggle_favorite(
+                template_id="template-trend-1",
+                user_id="user-1"
+            )
+
+
+class TestTemplateServiceIntegration:
+    """Integration tests for TemplateService"""
+
+    async def test_get_popular_all_categories_sorted_by_usage(
+        self, template_service: TemplateService, sample_templates, db_session: AsyncSession
+    ):
+        """Should return templates sorted by usage_count descending"""
+        # Act
+        result = await template_service.get_popular_templates(limit=5)
+
+        # Assert
+        assert len(result) == 5
+        usage_counts = [t.usage_count for t in result]
+        assert usage_counts == sorted(usage_counts, reverse=True)
+
+    async def test_add_rating_with_empty_comment(
+        self, template_service: TemplateService, sample_templates
+    ):
+        """Should accept empty string comment"""
+        # Act
+        rating = await template_service.add_rating(
+            template_id="template-trend-1",
+            user_id="user-1",
+            rating=4,
+            comment=""
+        )
+
+        # Assert
+        assert rating.comment == ""
+
+    async def test_rating_boundary_values(
+        self, template_service: TemplateService, sample_templates, db_session: AsyncSession
+    ):
+        """Should accept all valid rating values (1-5)"""
+        # Arrange
+        template_id = "template-multi-1"
+
+        # Act - Add ratings for all boundary values
+        for rating_value in [1, 2, 3, 4, 5]:
+            user_id = f"user-boundary-{rating_value}"
+            rating = await template_service.add_rating(
+                template_id=template_id,
+                user_id=user_id,
+                rating=rating_value
+            )
+
+            # Assert
+            assert rating.rating == rating_value
+
+        # Verify average calculation
+        await db_session.refresh(sample_templates[3])
+        template = sample_templates[3]
+        expected_average = (1 + 2 + 3 + 4 + 5) / 5
+        assert abs(float(template.rating_average) - expected_average) < 0.01
+
+    async def test_rating_just_below_boundary(
+        self, template_service: TemplateService, sample_templates
+    ):
+        """Should reject rating < 1"""
+        # Act & Assert
+        with pytest.raises(ValueError, match="Rating must be between 1 and 5"):
+            await template_service.add_rating(
+                template_id="template-trend-1",
+                user_id="user-1",
+                rating=0.99
+            )
+
+    async def test_rating_just_above_boundary(
+        self, template_service: TemplateService, sample_templates
+    ):
+        """Should reject rating > 5"""
+        # Act & Assert
+        with pytest.raises(ValueError, match="Rating must be between 1 and 5"):
+            await template_service.add_rating(
+                template_id="template-trend-1",
+                user_id="user-1",
+                rating=5.01
+            )
+
+    async def test_add_rating_to_non_existent_template(
+        self, template_service: TemplateService
+    ):
+        """Should raise ValueError for non-existent template"""
+        # Act & Assert
+        with pytest.raises(ValueError, match="Template not found"):
+            await template_service.add_rating(
+                template_id="completely-invalid-id-xyz",
+                user_id="user-1",
+                rating=3
+            )
+
+    async def test_get_popular_with_zero_limit(
+        self, template_service: TemplateService, sample_templates
+    ):
+        """Should handle zero limit gracefully"""
+        # Act
+        result = await template_service.get_popular_templates(limit=0)
+
+        # Assert
+        assert len(result) == 0
+
+    async def test_get_popular_with_high_limit(
+        self, template_service: TemplateService, sample_templates
+    ):
+        """Should return all templates when limit exceeds total"""
+        # Act
+        result = await template_service.get_popular_templates(limit=1000)
+
+        # Assert
+        assert len(result) == 5  # Only 5 templates available

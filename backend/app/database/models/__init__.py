@@ -55,6 +55,16 @@ from app.database.models.task import (
     TaskStatus,
     TaskPriority,
 )
+from app.database.models.strategy_builder import (
+    NodeTemplate,
+    QuickTest,
+    CodeGeneration,
+    BuilderSession,
+    NodeTypeCategory,
+    QuickTestStatus,
+    ValidationStatus as CodeValidationStatus,
+    SessionType,
+)
 
 __all__ = [
     # Models
@@ -74,6 +84,10 @@ __all__ = [
     "BacktestConfig",
     "BacktestResult",
     "Task",
+    "NodeTemplate",
+    "QuickTest",
+    "CodeGeneration",
+    "BuilderSession",
     # Enums - Dataset
     "DataSource",
     "DatasetStatus",
@@ -114,4 +128,9 @@ __all__ = [
     "TaskType",
     "TaskStatus",
     "TaskPriority",
+    # Enums - Strategy Builder
+    "NodeTypeCategory",
+    "QuickTestStatus",
+    "CodeValidationStatus",
+    "SessionType",
 ]

@@ -23,6 +23,10 @@ from app.database.models import (
     StrategyTemplate,
     StrategyInstance,
     TemplateRating,
+    NodeTemplate,
+    QuickTest,
+    CodeGeneration,
+    BuilderSession,
 )
 from app.database.base import Base
 

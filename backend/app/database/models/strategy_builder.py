@@ -9,9 +9,10 @@ This module extends the Strategy system with:
 """
 
 import enum
-from typing import List, TYPE_CHECKING
+from datetime import datetime
+from typing import List, TYPE_CHECKING, Optional
 
-from sqlalchemy import String, Integer, Enum, JSON, Index, CheckConstraint, Text, Boolean, Float, ForeignKey
+from sqlalchemy import String, Integer, Enum, JSON, Index, CheckConstraint, Text, Boolean, Float, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import DateTime
 
@@ -308,13 +309,13 @@ class QuickTest(BaseDBModel):
         comment="Test execution time in seconds"
     )
 
-    started_at: Mapped["datetime | None"] = mapped_column(
+    started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         comment="Test start timestamp"
     )
 
-    completed_at: Mapped["datetime | None"] = mapped_column(
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         index=True,
@@ -572,15 +573,15 @@ class BuilderSession(BaseDBModel):
         comment="Whether session is currently active"
     )
 
-    last_activity_at: Mapped["datetime"] = mapped_column(
+    last_activity_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default="CURRENT_TIMESTAMP",
+        server_default=func.now(),
         index=True,
         comment="Last user activity timestamp for session cleanup"
     )
 
-    expires_at: Mapped["datetime | None"] = mapped_column(
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         index=True,

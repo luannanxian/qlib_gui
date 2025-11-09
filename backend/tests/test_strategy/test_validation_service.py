@@ -319,3 +319,149 @@ class TestValidationServiceComplete:
 
         # Error should include node_id
         assert any(err.node_id == "pos_node_1" for err in result.errors)
+
+
+class TestValidationServiceEdgeCases:
+    """Test edge cases and boundary conditions"""
+
+    def test_invalid_edge_source_and_target(self):
+        """Test validation catches invalid edge references"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.INDICATOR),
+                LogicNode(id="2", type=NodeType.SIGNAL, signal_type=SignalType.BUY)
+            ],
+            edges=[
+                LogicEdge(**{"from": "99", "to": "1"}),  # Invalid source
+                LogicEdge(**{"from": "1", "to": "99"})   # Invalid target
+            ]
+        )
+
+        result = service.validate_logic_flow(flow)
+
+        assert result.is_valid is False
+        assert len(result.errors) == 2
+
+    def test_position_exactly_100_percent(self):
+        """Test validation passes when position allocation is exactly 100%"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.POSITION, position_value=50.0),
+                LogicNode(id="2", type=NodeType.POSITION, position_value=50.0)
+            ],
+            edges=[]
+        )
+
+        result = service.check_positions(flow)
+
+        assert result.is_valid is True
+        assert len(result.errors) == 0
+
+    def test_single_position_node_100_percent(self):
+        """Test validation passes with single position at 100%"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.POSITION, position_value=100.0)
+            ],
+            edges=[]
+        )
+
+        result = service.check_positions(flow)
+
+        assert result.is_valid is True
+
+    def test_no_position_nodes_valid(self):
+        """Test validation passes when no position nodes exist"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.INDICATOR)
+            ],
+            edges=[]
+        )
+
+        result = service.check_positions(flow)
+
+        assert result.is_valid is True
+        assert len(result.errors) == 0
+
+    def test_no_stop_loss_nodes_valid(self):
+        """Test validation passes when no stop loss nodes exist"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.INDICATOR)
+            ],
+            edges=[]
+        )
+
+        result = service.check_stop_loss(flow)
+
+        assert result.is_valid is True
+        assert len(result.errors) == 0
+
+    def test_multiple_stop_loss_nodes_with_values(self):
+        """Test validation passes with multiple stop loss nodes"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.STOP_LOSS, stop_loss_value=5.0),
+                LogicNode(id="2", type=NodeType.STOP_LOSS, stop_loss_value=10.0)
+            ],
+            edges=[]
+        )
+
+        result = service.check_stop_loss(flow)
+
+        assert result.is_valid is True
+
+    def test_complex_cycle_detection(self):
+        """Test cycle detection with complex graph"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.INDICATOR),
+                LogicNode(id="2", type=NodeType.CONDITION),
+                LogicNode(id="3", type=NodeType.CONDITION),
+                LogicNode(id="4", type=NodeType.SIGNAL, signal_type=SignalType.BUY)
+            ],
+            edges=[
+                LogicEdge(**{"from": "1", "to": "2"}),
+                LogicEdge(**{"from": "2", "to": "3"}),
+                LogicEdge(**{"from": "3", "to": "4"}),
+                LogicEdge(**{"from": "4", "to": "2"})  # Cycle back
+            ]
+        )
+
+        result = service.validate_logic_flow(flow)
+
+        # Should have cycle warning
+        assert any("circular" in warn.message.lower() for warn in result.warnings)
+
+    def test_self_loop_detection(self):
+        """Test detection of self-loops"""
+        service = ValidationService()
+
+        flow = LogicFlow(
+            nodes=[
+                LogicNode(id="1", type=NodeType.INDICATOR)
+            ],
+            edges=[
+                LogicEdge(**{"from": "1", "to": "1"})  # Self loop
+            ]
+        )
+
+        result = service.validate_logic_flow(flow)
+
+        # Self loop is a cycle
+        assert any("circular" in warn.message.lower() for warn in result.warnings)

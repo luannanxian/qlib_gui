@@ -53,6 +53,7 @@ from app.modules.strategy.schemas.strategy import (
     StrategyVersionResponse,
     # Validation schemas
     StrategyValidationResponse,
+    LogicFlow,
 )
 
 router = APIRouter(prefix="/api", tags=["strategies"])
@@ -731,9 +732,10 @@ async def validate_strategy(
                 detail=f"Strategy not found: {strategy_id}"
             )
 
-        # Validate
+        # Validate - convert dict to LogicFlow object
         service = ValidationService()
-        result = service.validate_logic_flow(strategy.logic_flow)
+        flow = LogicFlow.model_validate(strategy.logic_flow)
+        result = service.validate_logic_flow(flow)
 
         return result
 

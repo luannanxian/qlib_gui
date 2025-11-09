@@ -186,7 +186,7 @@ def upgrade() -> None:
         sa.Column('draft_parameters', sa.JSON(), server_default='{}', nullable=False, comment='Draft parameter values'),
         sa.Column('draft_metadata', sa.JSON(), nullable=True, comment='Additional draft metadata (cursor position, zoom level, etc.)'),
         sa.Column('is_active', sa.Boolean(), server_default='1', nullable=False, comment='Whether session is currently active'),
-        sa.Column('last_activity_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False, comment='Last user activity timestamp for session cleanup'),
+        sa.Column('last_activity_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False, comment='Last user activity timestamp for session cleanup'),
         sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True, comment='Session expiration timestamp'),
         sa.Column('collaborator_ids', sa.JSON(), nullable=True, comment='List of collaborator user IDs (for future collaborative editing)'),
         sa.Column('lock_info', sa.JSON(), nullable=True, comment='Locking information for collaborative editing'),

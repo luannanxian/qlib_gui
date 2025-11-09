@@ -3,7 +3,7 @@ Tests for Mode API endpoints with Database Persistence
 """
 
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -379,5 +379,253 @@ class TestUpdatePreferences:
                 data = response.json()["data"]
                 assert data["language"] == "fr-FR"
                 assert data["show_tooltips"] is False
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_update_preferences_no_changes(self, db_session: AsyncSession):
+        """Test update with no actual changes (all fields same as current)"""
+        user_id = "user-666"
+        repo = UserPreferencesRepository(db_session)
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                # Get initial preferences
+                get_response = await client.get("/api/user/preferences")
+                initial_data = get_response.json()["data"]
+
+                # Update with same values
+                update_response = await client.put(
+                    "/api/user/preferences",
+                    json={
+                        "language": initial_data["language"],
+                        "show_tooltips": initial_data["show_tooltips"],
+                        "completed_guides": initial_data["completed_guides"]
+                    }
+                )
+
+                assert update_response.status_code == 200
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_update_all_preferences_at_once(self, db_session: AsyncSession, mock_audit_logger):
+        """Test updating all preferences in a single request"""
+        user_id = "user-777"
+        repo = UserPreferencesRepository(db_session)
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(repo)
+
+        with patch('app.modules.user_onboarding.api.mode_api.audit_logger', mock_audit_logger):
+            try:
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                    response = await client.put(
+                        "/api/user/preferences",
+                        json={
+                            "language": "es-ES",
+                            "show_tooltips": False,
+                            "completed_guides": ["guide-a", "guide-b", "guide-c"]
+                        }
+                    )
+
+                    assert response.status_code == 200
+                    data = response.json()["data"]
+                    assert data["language"] == "es-ES"
+                    assert data["show_tooltips"] is False
+                    assert len(data["completed_guides"]) == 3
+            finally:
+                app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+class TestModeAPIErrorHandling:
+    """Test error handling in mode API endpoints"""
+
+    async def test_get_mode_database_error(self, db_session: AsyncSession, mock_audit_logger):
+        """Test error handling when database fails"""
+        user_id = "user-error-1"
+
+        # Mock repository to raise exception
+        mock_repo = MagicMock()
+        mock_repo.get_or_create = AsyncMock(side_effect=Exception("Database error"))
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(mock_repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/user/mode")
+
+                assert response.status_code == 500
+                assert "Failed to get user mode" in response.json()["detail"]
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_update_mode_database_error(self, mock_audit_logger):
+        """Test error handling when database fails during mode update"""
+        user_id = "user-error-2"
+
+        # Mock repository to raise exception
+        mock_repo = MagicMock()
+        mock_repo.get_or_create = AsyncMock(return_value=(MagicMock(mode="beginner"), False))
+        mock_repo.update_mode = AsyncMock(return_value=None)
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(mock_repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.post(
+                    "/api/user/mode",
+                    json={"mode": "expert"}
+                )
+
+                assert response.status_code == 500
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_get_preferences_database_error(self):
+        """Test error handling when database fails during preferences get"""
+        user_id = "user-error-3"
+
+        # Mock repository to raise exception
+        mock_repo = MagicMock()
+        mock_repo.get_or_create = AsyncMock(side_effect=Exception("Database error"))
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(mock_repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/api/user/preferences")
+
+                assert response.status_code == 500
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_update_preferences_database_error(self, mock_audit_logger):
+        """Test error handling when database fails during preferences update"""
+        user_id = "user-error-4"
+
+        # Mock repository to raise exception
+        mock_repo = MagicMock()
+        prefs = MagicMock()
+        prefs.user_id = user_id
+        prefs.mode = "beginner"
+        prefs.completed_guides = []
+        prefs.show_tooltips = True
+        prefs.language = "en"
+        prefs.created_at = None
+        prefs.updated_at = None
+
+        mock_repo.get_or_create = AsyncMock(return_value=(prefs, False))
+        mock_repo.session = MagicMock()
+        mock_repo.session.commit = AsyncMock(side_effect=Exception("Database error"))
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(mock_repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.put(
+                    "/api/user/preferences",
+                    json={"language": "zh-CN"}
+                )
+
+                assert response.status_code == 500
+        finally:
+            app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+class TestModeAPIEdgeCases:
+    """Test edge cases and boundary conditions"""
+
+    async def test_update_mode_same_as_current(self, db_session: AsyncSession):
+        """Test updating mode to the same value as current"""
+        user_id = "user-888"
+        repo = UserPreferencesRepository(db_session)
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                # Get current mode
+                get_response = await client.get("/api/user/mode")
+                current_mode = get_response.json()["data"]["mode"]
+
+                # Update to same mode
+                update_response = await client.post(
+                    "/api/user/mode",
+                    json={"mode": current_mode}
+                )
+
+                assert update_response.status_code == 200
+                assert update_response.json()["data"]["mode"] == current_mode
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_multiple_consecutive_updates(self, db_session: AsyncSession):
+        """Test multiple consecutive preference updates"""
+        user_id = "user-999"
+        repo = UserPreferencesRepository(db_session)
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                # First update
+                response1 = await client.put(
+                    "/api/user/preferences",
+                    json={"language": "en-US"}
+                )
+                assert response1.status_code == 200
+                assert response1.json()["data"]["language"] == "en-US"
+
+                # Second update
+                response2 = await client.put(
+                    "/api/user/preferences",
+                    json={"show_tooltips": False}
+                )
+                assert response2.status_code == 200
+                assert response2.json()["data"]["show_tooltips"] is False
+
+                # Verify both changes persisted
+                get_response = await client.get("/api/user/preferences")
+                data = get_response.json()["data"]
+                assert data["language"] == "en-US"
+                assert data["show_tooltips"] is False
+        finally:
+            app.dependency_overrides.clear()
+
+    async def test_empty_completed_guides_list(self, db_session: AsyncSession):
+        """Test setting completed_guides to empty list"""
+        user_id = "user-1000"
+        repo = UserPreferencesRepository(db_session)
+
+        # Create user with completed guides
+        await repo.create({
+            "user_id": user_id,
+            "mode": "beginner",
+            "completed_guides": ["guide-1", "guide-2"]
+        })
+        await db_session.commit()
+
+        app.dependency_overrides[get_current_user_id] = override_get_current_user_id(user_id)
+        app.dependency_overrides[get_user_prefs_repo] = override_get_user_prefs_repo(repo)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.put(
+                    "/api/user/preferences",
+                    json={"completed_guides": []}
+                )
+
+                assert response.status_code == 200
+                assert response.json()["data"]["completed_guides"] == []
         finally:
             app.dependency_overrides.clear()

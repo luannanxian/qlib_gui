@@ -932,7 +932,7 @@ class TestPreprocessingAPIErrorHandling:
             response = await async_client.post("/api/preprocessing/rules", json={
                 "name": "Test Rule",
                 "description": "Test",
-                "rule_type": "missing_values",
+                "rule_type": "missing_value",
                 "configuration": {"method": "drop"}
             })
             assert response.status_code == 500
@@ -947,7 +947,7 @@ class TestPreprocessingAPIErrorHandling:
             response = await async_client.post("/api/preprocessing/rules", json={
                 "name": "Test Rule",
                 "description": "Test",
-                "rule_type": "missing_values",
+                "rule_type": "missing_value",
                 "configuration": {"method": "drop"}
             })
             assert response.status_code == 409
@@ -962,7 +962,7 @@ class TestPreprocessingAPIErrorHandling:
             response = await async_client.post("/api/preprocessing/rules", json={
                 "name": "Test Rule",
                 "description": "Test",
-                "rule_type": "missing_values",
+                "rule_type": "missing_value",
                 "configuration": {"method": "drop"}
             })
             assert response.status_code == 500
@@ -1015,7 +1015,7 @@ class TestPreprocessingAPIErrorHandling:
         create_response = await async_client.post("/api/preprocessing/rules", json={
             "name": "Test Rule",
             "description": "Test",
-            "rule_type": "missing_values",
+            "rule_type": "missing_value",
             "configuration": {"method": "drop"}
         })
         rule_id = create_response.json()["id"]
@@ -1037,7 +1037,7 @@ class TestPreprocessingAPIErrorHandling:
         create_response = await async_client.post("/api/preprocessing/rules", json={
             "name": "Test Rule",
             "description": "Test",
-            "rule_type": "missing_values",
+            "rule_type": "missing_value",
             "configuration": {"method": "drop"}
         })
         rule_id = create_response.json()["id"]
@@ -1058,7 +1058,7 @@ class TestPreprocessingAPIErrorHandling:
         create_response = await async_client.post("/api/preprocessing/rules", json={
             "name": "Test Rule",
             "description": "Test",
-            "rule_type": "missing_values",
+            "rule_type": "missing_value",
             "configuration": {"method": "drop"}
         })
         rule_id = create_response.json()["id"]
@@ -1104,7 +1104,7 @@ class TestPreprocessingAPIErrorHandling:
             response = await async_client.post("/api/preprocessing/rules", json={
                 "name": "Test",
                 "description": "Test",
-                "rule_type": "missing_values",
+                "rule_type": "missing_value",
                 "configuration": {"method": "drop"}
             })
             assert response.status_code == 400
@@ -1162,7 +1162,7 @@ class TestPreprocessingAPIErrorHandling:
             response = await async_client.post("/api/preprocessing/rules", json={
                 "name": "Test",
                 "description": "Test",
-                "rule_type": "missing_values",
+                "rule_type": "missing_value",
                 "configuration": {"method": "drop"},
                 "user_id": "user123"
             })
@@ -1176,8 +1176,8 @@ class TestPreprocessingAPIErrorHandling:
 
             response = await async_client.post("/api/preprocessing/execute", json={
                 "dataset_id": "test-dataset-id",
-                "rule_ids": ["rule-id"],
-                "output_path": "/output/data.csv"
+                "rule_id": "rule-id",
+                "output_dataset_name": "Output Dataset"
             })
             assert response.status_code == 500
 

@@ -230,3 +230,150 @@ class TestIndicatorService:
         with pytest.raises(RuntimeError, match="Enum error"):
             await indicator_service.get_indicator_categories()
 
+    async def test_get_all_indicators_pagination(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test pagination in get_all_indicators"""
+        # Create multiple indicators
+        for i in range(5):
+            data = sample_indicator_data.copy()
+            data["code"] = f"IND_{i}"
+            await indicator_repo.create(data, commit=True)
+
+        # Get with limit
+        result = await indicator_service.get_all_indicators(skip=0, limit=2)
+
+        assert len(result["indicators"]) == 2
+        assert result["skip"] == 0
+        assert result["limit"] == 2
+        assert result["total"] == 5
+
+    async def test_get_all_indicators_skip_offset(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test skip parameter in get_all_indicators"""
+        # Create multiple indicators
+        for i in range(5):
+            data = sample_indicator_data.copy()
+            data["code"] = f"IND_{i}"
+            await indicator_repo.create(data, commit=True)
+
+        # Get with skip
+        result = await indicator_service.get_all_indicators(skip=3, limit=100)
+
+        assert len(result["indicators"]) == 2
+
+    async def test_search_indicators_with_pagination(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test pagination in search_indicators"""
+        # Create indicators with searchable names
+        for i in range(3):
+            data = sample_indicator_data.copy()
+            data["code"] = f"SEARCH_{i}"
+            data["name_zh"] = f"搜索指标_{i}"
+            await indicator_repo.create(data, commit=True)
+
+        result = await indicator_service.search_indicators("搜索", skip=0, limit=1)
+
+        assert len(result["indicators"]) <= 1
+        assert result["limit"] == 1
+
+    async def test_increment_usage_return_type(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test increment_usage returns correct type"""
+        created = await indicator_repo.create(sample_indicator_data, commit=True)
+
+        result = await indicator_service.increment_usage(created.id)
+
+        assert isinstance(result, bool)
+        assert result is True
+
+    async def test_get_popular_indicators_with_limit(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test get_popular_indicators respects limit parameter"""
+        # Create indicators with different usage counts
+        for i in range(5):
+            data = sample_indicator_data.copy()
+            data["code"] = f"POP_{i}"
+            indicator = await indicator_repo.create(data, commit=True)
+
+            # Increment usage
+            for _ in range(i + 1):
+                await indicator_repo.increment_usage_count(indicator.id)
+
+        result = await indicator_service.get_popular_indicators(limit=3)
+
+        assert len(result["indicators"]) == 3
+
+    async def test_to_dict_includes_all_fields(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test that _to_dict includes all expected fields"""
+        created = await indicator_repo.create(sample_indicator_data, commit=True)
+
+        detail = await indicator_service.get_indicator_detail(created.id)
+
+        expected_fields = [
+            "id", "code", "name_zh", "name_en", "category", "source",
+            "description_zh", "description_en", "formula", "parameters",
+            "default_params", "usage_count", "is_enabled", "created_at", "updated_at"
+        ]
+
+        for field in expected_fields:
+            assert field in detail
+
+    async def test_get_all_indicators_returns_dict_structure(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test that get_all_indicators returns correct dict structure"""
+        await indicator_repo.create(sample_indicator_data, commit=True)
+
+        result = await indicator_service.get_all_indicators()
+
+        assert "indicators" in result
+        assert "total" in result
+        assert "skip" in result
+        assert "limit" in result
+        assert isinstance(result["indicators"], list)
+
+    async def test_get_indicators_by_category_returns_correct_structure(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test category filtering returns correct structure"""
+        await indicator_repo.create(sample_indicator_data, commit=True)
+
+        result = await indicator_service.get_indicators_by_category(IndicatorCategory.TREND.value)
+
+        assert "indicators" in result
+        assert "total" in result
+        assert "skip" in result
+        assert "limit" in result
+
+    async def test_search_indicators_returns_correct_structure(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test search returns correct structure"""
+        await indicator_repo.create(sample_indicator_data, commit=True)
+
+        result = await indicator_service.search_indicators("SMA")
+
+        assert "indicators" in result
+        assert "total" in result
+        assert "keyword" in result
+        assert "skip" in result
+        assert "limit" in result
+
+    async def test_get_popular_indicators_returns_correct_structure(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test get_popular returns correct structure"""
+        await indicator_repo.create(sample_indicator_data, commit=True)
+
+        result = await indicator_service.get_popular_indicators()
+
+        assert "indicators" in result
+        assert "total" in result
+
+    async def test_validate_indicator_exists_with_disabled(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test validation correctly handles disabled indicators"""
+        disabled_data = sample_indicator_data.copy()
+        disabled_data["is_enabled"] = False
+        created = await indicator_repo.create(disabled_data, commit=True)
+
+        result = await indicator_service.validate_indicator_exists(created.id)
+
+        assert result is False
+
+    async def test_validate_indicator_exists_with_enabled(self, indicator_service, indicator_repo, sample_indicator_data):
+        """Test validation correctly handles enabled indicators"""
+        enabled_data = sample_indicator_data.copy()
+        enabled_data["is_enabled"] = True
+        created = await indicator_repo.create(enabled_data, commit=True)
+
+        result = await indicator_service.validate_indicator_exists(created.id)
+
+        assert result is True
+
