@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.modules.user_onboarding.api import mode_api
 from app.modules.data_management.api import dataset_api, preprocessing_api, import_api, chart_api
-from app.modules.strategy.api import strategy_api
+from app.modules.strategy.api import strategy_api, builder_api
 from app.modules.indicator.api import indicator_api, custom_factor_api, user_library_api
 from app.modules.backtest.api import backtest_api, websocket_api
 from app.modules.task_scheduling.api import task_api
@@ -158,6 +158,7 @@ app.include_router(preprocessing_api.router)
 app.include_router(import_api.router)
 app.include_router(chart_api.router)
 app.include_router(strategy_api.router)
+app.include_router(builder_api.router)
 app.include_router(indicator_api.router)
 app.include_router(custom_factor_api.router)
 app.include_router(user_library_api.router)
