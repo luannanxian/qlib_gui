@@ -1,0 +1,6 @@
+# POSITION: {{ node.display_name }}
+{% if params.position_size %}
+position = {{ input_var }} * {{ params.position_size }}
+{% else %}
+position = {{ input_var }}  # Default position sizing
+{% endif %}

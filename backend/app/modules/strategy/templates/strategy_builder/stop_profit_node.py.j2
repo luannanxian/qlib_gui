@@ -1,0 +1,7 @@
+# STOP_PROFIT: {{ node.display_name }}
+{% if params.stop_profit_percentage %}
+stop_profit_threshold = {{ params.stop_profit_percentage }}
+{% else %}
+stop_profit_threshold = 0.10  # Default 10%
+{% endif %}
+# Apply stop profit logic

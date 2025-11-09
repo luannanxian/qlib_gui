@@ -1,0 +1,2 @@
+# CONDITION: {{ node.display_name }}
+condition = {{ input_var }} {{ params.operator | default('>') }} {{ params.threshold | default(0) }}

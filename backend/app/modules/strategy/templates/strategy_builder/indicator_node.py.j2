@@ -1,0 +1,11 @@
+# INDICATOR: {{ node.display_name }}
+{% if params.short_period and params.long_period %}
+ma_short = talib.SMA(score, timeperiod={{ params.short_period }})
+ma_long = talib.SMA(score, timeperiod={{ params.long_period }})
+signal = ma_short - ma_long
+{% elif params.period %}
+signal = talib.{{ params.indicator_function | default('SMA') }}(score, timeperiod={{ params.period }})
+{% else %}
+# Custom indicator logic
+signal = score  # Placeholder
+{% endif %}

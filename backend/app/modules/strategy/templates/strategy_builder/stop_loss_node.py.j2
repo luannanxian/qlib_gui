@@ -1,0 +1,7 @@
+# STOP_LOSS: {{ node.display_name }}
+{% if params.stop_loss_percentage %}
+stop_loss_threshold = {{ params.stop_loss_percentage }}
+{% else %}
+stop_loss_threshold = 0.05  # Default 5%
+{% endif %}
+# Apply stop loss logic

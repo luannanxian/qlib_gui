@@ -1,0 +1,19 @@
+from qlib.strategy.base import BaseStrategy
+from qlib.data import D
+import pandas as pd
+import talib
+
+
+class CustomStrategy(BaseStrategy):
+    """Auto-generated strategy from Strategy Builder"""
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def generate_trade_decision(self, score, current_temp, pred_score, trade_exchange):
+        """Generate trade decision based on logic flow"""
+{{ code_body | indent(8) }}
+
+        return trade_decision

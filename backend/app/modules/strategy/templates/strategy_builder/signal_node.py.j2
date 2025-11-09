@@ -1,0 +1,8 @@
+# SIGNAL: {{ node.display_name }}
+{% if params.signal_type == 'BUY' %}
+trade_decision = {{ input_var }}.astype(int)
+{% elif params.signal_type == 'SELL' %}
+trade_decision = -{{ input_var }}.astype(int)
+{% else %}
+trade_decision = {{ input_var }}.astype(int)
+{% endif %}
